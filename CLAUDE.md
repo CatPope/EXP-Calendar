@@ -60,6 +60,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### PR 규칙
 
+- push 후 `gh pr list --head <브랜치명>`으로 기존 PR 확인 → 있으면 자동 반영, 없으면 `gh pr create`로 생성
 - PR 생성 시 `.github/pull_request_template.md` 템플릿의 **모든 필드**를 채운다
 - 필수 섹션: `## Part`, `## 요구사항 ID`, `## Summary`, `## Test plan`
 - `gh pr create` 사용 시 `--body`에 템플릿 전체 구조를 포함한다 (빈 `--body`로 템플릿 덮어쓰기 금지)
