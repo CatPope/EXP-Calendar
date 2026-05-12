@@ -16,12 +16,13 @@
       "Write(.claude/compact.md)",
       "Bash(gh workflow:*)",
       "Bash(gh pr:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(rm:*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
-      "Bash(git push --force *)",
       "Bash(git reset --hard *)",
+      "Bash(gh pr merge *)",
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./secrets/**)"

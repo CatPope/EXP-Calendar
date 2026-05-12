@@ -27,13 +27,6 @@
 - [ ] Database (PostgreSQL)
 - [ ] Infra (Docker/Nginx)
 
-## docs/dev/ 참조
-
-- [ ] Architecture.md 갱신 필요
-- [ ] ADR 추가 필요
-- [ ] test-plan 갱신 필요
-- [ ] 해당 없음
-
 ## Test plan
 
 - [ ] 단위 테스트 통과
@@ -45,7 +38,6 @@
 - [ ] Conventional Commits 형식 준수
 - [ ] 시크릿/API 키 미포함 확인
 - [ ] 환경변수 추가 시 `.env.example` 반영
-- [ ] 문서 15줄 헤더 구조 유지 (해당 시)
 
 ## 담당
 

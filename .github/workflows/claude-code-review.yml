@@ -14,6 +14,15 @@ jobs:
       id-token: write
 
     steps:
+      - name: Verify CLAUDE_CODE_OAUTH_TOKEN is set
+        env:
+          TOKEN_SET: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+        run: |
+          if [ "$TOKEN_SET" != "true" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN 시크릿이 설정되지 않았습니다. GitHub 레포 Settings > Secrets에서 추가하세요."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v6
         with:

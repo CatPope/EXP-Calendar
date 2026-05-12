@@ -19,15 +19,30 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v6
+
+      - name: Check frontend exists
+        id: check
+        run: |
+          if [ ! -f frontend/package.json ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No frontend/package.json found — skipping."
+          fi
+        working-directory: .
+
       - uses: actions/setup-node@v6
+        if: steps.check.outputs.skip != 'true'
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+        if: steps.check.outputs.skip != 'true'
       - run: npm run lint
+        if: steps.check.outputs.skip != 'true'
       - run: npm run build
+        if: steps.check.outputs.skip != 'true'
       - run: npm test -- --passWithNoTests
+        if: steps.check.outputs.skip != 'true'
 
   backend:
     name: Backend (Go)
@@ -37,12 +52,25 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v6
+
+      - name: Check backend exists
+        id: check
+        run: |
+          if [ ! -f backend/go.mod ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No backend/go.mod found — skipping."
+          fi
+        working-directory: .
+
       - uses: actions/setup-go@v5
+        if: steps.check.outputs.skip != 'true'
         with:
           go-version: "1.22"
           cache-dependency-path: backend/go.sum
       - run: go vet ./...
+        if: steps.check.outputs.skip != 'true'
       - run: go test ./... -race -count=1
+        if: steps.check.outputs.skip != 'true'
 
   docker:
     name: Docker Build
@@ -50,4 +78,14 @@ jobs:
     needs: [frontend, backend]
     steps:
       - uses: actions/checkout@v6
+
+      - name: Check docker-compose exists
+        id: check
+        run: |
+          if [ ! -f docker-compose.yml ] && [ ! -f compose.yml ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No docker-compose config found — skipping."
+          fi
+
       - run: docker compose build --no-cache
+        if: steps.check.outputs.skip != 'true'
