@@ -45,5 +45,5 @@ npm-debug.log*
 sw.js
 workbox-*.js
 
-# OMC / Claude Code
+# OMC
 **/.omc/

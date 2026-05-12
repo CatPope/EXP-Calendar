@@ -38,6 +38,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 인앱 상점은 무료 재화만 운영
 - 병렬 개발: Part A(인증) 완료 후 B·D·E·F·H 동시 착수 (SRS 1.4절 참조)
 
+## 개발 규칙
+
+- 기능 구현 시 **항상 subagent(Agent 도구)를 활용**하여 병렬로 작업한다
+- 독립적인 파일/모듈은 여러 subagent를 동시에 spawning하여 개발 속도를 높인다
+- 예: frontend와 backend를 각각 별도 subagent로 동시 구현
+
 ## UI Theme
 
 다크 모드 기반 게임 UI. 배경 `#0D1117`, 강조 `#8B5CF6`(퍼플), 성공 `#06D6A0`(시안), 보상 `#FFD700`(골드), 경고 `#FF6B6B`(레드).
