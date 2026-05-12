@@ -27,13 +27,6 @@
 - [ ] Database (PostgreSQL)
 - [ ] Infra (Docker/Nginx)
 
-## docs/dev/ 참조
-
-- [ ] Architecture.md 갱신 필요
-- [ ] ADR 추가 필요
-- [ ] test-plan 갱신 필요
-- [ ] 해당 없음
-
 ## Test plan
 
 - [ ] 단위 테스트 통과

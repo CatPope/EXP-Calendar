@@ -16,22 +16,6 @@ permissions:
   pull-requests: read
 
 jobs:
-  docs-structure:
-    name: Docs Structure
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Validate docs/dev/ structure
-        run: node .github/scripts/validate-docs-structure.mjs
-
   secret-scan:
     name: Secret Scan
     runs-on: ubuntu-latest
@@ -96,14 +80,12 @@ jobs:
       contents: read
       pull-requests: write
     needs:
-      - docs-structure
       - secret-scan
       - dependency-audit
 
     steps:
       - name: Check upstream job results
         env:
-          DOCS_STRUCTURE: ${{ needs.docs-structure.result }}
           SECRET_SCAN: ${{ needs.secret-scan.result }}
           DEPENDENCY_AUDIT: ${{ needs.dependency-audit.result }}
         run: |
@@ -118,7 +100,6 @@ jobs:
             fi
           }
 
-          report "Docs Structure"    "${DOCS_STRUCTURE}"
           report "Secret Scan"       "${SECRET_SCAN}"
           report "Dependency Audit"  "${DEPENDENCY_AUDIT}"
 
@@ -133,7 +114,6 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         env:
-          DOCS_RESULT:   ${{ needs.docs-structure.result }}
           SECRET_RESULT: ${{ needs.secret-scan.result }}
           AUDIT_RESULT:  ${{ needs.dependency-audit.result }}
         with:
@@ -158,7 +138,6 @@ jobs:
             };
 
             const rows = [
-              ["Docs Structure",    process.env.DOCS_RESULT],
               ["Secret Scan",       process.env.SECRET_RESULT],
               ["Dependency Audit",  process.env.AUDIT_RESULT],
             ];

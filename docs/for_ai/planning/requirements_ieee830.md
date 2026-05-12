@@ -113,15 +113,9 @@ EXP Calendar는 사용자의 할 일(귀찮은 일)을 게임화하여 시작의
 
 | # | 문서명 | 위치 / URL | 비고 |
 |---|--------|-----------|------|
-| 1 | IEEE 830-1998 표준 | IEEE Std 830-1998 | 본 문서의 구조적 기반 |
-| 2 | 프로젝트 일정표 | `docs/planning/project_schedule.md` | 2주 개발 일정 및 마일스톤 |
-| 3 | 발표 디자인 가이드 | `docs/planning/presentation_design_guide.md` | 컬러·타이포 |
-| 4 | 요구사항 정의서 (기존) | `docs/planning/requirements.md` | 기존 요구사항 원본 |
-| 5 | 아키텍처 정의서 | `docs/architecture.md` | 시스템 구성도 (작성 예정) |
-| 6 | 보안 정의서 | `docs/security.md` | 인증 흐름·토큰 관리 (작성 예정) |
-| 7 | 게이미피케이션 규칙 정의서 | `docs/gamification_rules.md` | EXP 공식·레벨업 (작성 예정) |
-| 8 | Google Calendar API 문서 | https://developers.google.com/calendar | 외부 API |
-| 9 | Google OAuth 2.0 문서 | https://developers.google.com/identity | 인증 프로토콜 |
+| 1 | IEEE 830-1998 표준 | `docs/for_ai/planning/requirements.md` | 기존 요구사항 원본 |
+| 2 | Google Calendar API 문서 | https://developers.google.com/calendar | 외부 API |
+| 3 | Google OAuth 2.0 문서 | https://developers.google.com/identity | 인증 프로토콜 |
 
 ---
 

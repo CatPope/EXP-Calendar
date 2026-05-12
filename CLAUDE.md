@@ -20,14 +20,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-현재 **기획/설계 단계**. 코드 구현 전이며, `docs/planning/` 하위에 요구사항 문서가 존재한다.
+현재 **기획/설계 단계**. 코드 구현 전이며, `docs/for_ai/planning/` 하위에 요구사항 문서가 존재한다.
 개발 기한: **2주 (1주 개발 + 1주 테스트)**. SRS v1.2 기준 Part A~H 필수, Part I~J 권장.
 
 ## Key Documents
 
 | 문서 | 경로 | 설명 |
 |------|------|------|
-| SRS (IEEE 830) | `docs/planning/requirements_ieee830.md` | 정식 요구사항 명세서 (권위 문서) |
+| SRS (IEEE 830) | `docs/for_ai/planning/requirements_ieee830.md` | 정식 요구사항 명세서 (권위 문서) |
 
 ## Design Decisions
 
@@ -43,6 +43,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 기능 구현 시 **항상 subagent(Agent 도구)를 활용**하여 병렬로 작업한다
 - 독립적인 파일/모듈은 여러 subagent를 동시에 spawning하여 개발 속도를 높인다
 - 예: frontend와 backend를 각각 별도 subagent로 동시 구현
+
+## Git Convention
+
+### 커밋 메시지 (Conventional Commits)
+
+`<type>(<scope>): <subject>` — subject는 50자 이내
+
+- **type**: `feat|fix|docs|refactor|chore|test|style|perf|ci|build|revert`
+- **scope**: 소문자 kebab-case (예: `auth`, `part-b`, `game-engine`)
+- 예시: `feat(auth): Google OAuth 로그인 구현`, `fix(part-b): EXP 계산 오류 수정`
+
+### 브랜치 네이밍
+
+`<type>/<part>-<설명>` — 예: `feat/part-a-auth`, `fix/part-b-exp-calc`
+
+### PR 규칙
+
+- PR 생성 시 `.github/pull_request_template.md` 템플릿의 **모든 필드**를 채운다
+- 필수 섹션: `## Part`, `## 요구사항 ID`, `## Summary`, `## Test plan`
+- `gh pr create` 사용 시 `--body`에 템플릿 전체 구조를 포함한다 (빈 `--body`로 템플릿 덮어쓰기 금지)
+- CI 검증 항목: Conventional Commits 형식, CLAUDE.md 300줄 제한, JS 구문 검사, 시크릿 스캔
 
 ## UI Theme
 

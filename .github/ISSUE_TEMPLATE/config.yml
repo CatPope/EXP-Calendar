@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: SRS 요구사항 명세서
-    url: https://github.com/your-org/EXP-Calendar/blob/main/docs/planning/requirements_ieee830.md
+    url: https://github.com/your-org/EXP-Calendar/blob/main/docs/for_ai/planning/requirements_ieee830.md
     about: 요구사항 ID는 SRS 문서를 참고하세요

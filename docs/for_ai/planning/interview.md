@@ -64,19 +64,6 @@
 | SSL | Secure Sockets Layer |
 | CI/CD | Continuous Integration / Continuous Deployment |
 
-### 1.5 참고문헌
-
-| 문서명 | 위치 | 비고 |
-|--------|------|------|
-| 프로젝트 일정표 | `docs/planning/project_schedule.md` | 10주 로드맵 및 마일스톤 |
-| 발표 디자인 가이드 | `docs/planning/presentation_design_guide.md` | 컬러·타이포그래피·슬라이드 구성 |
-| 아키텍처 정의서 | `docs/architecture.md` | 시스템 구성도 (작성 예정) |
-| 디자인 정의서 | `docs/design.md` | 와이어프레임·컴포넌트 스타일 (작성 예정) |
-| 보안 정의서 | `docs/security.md` | 인증 흐름·토큰 관리 (작성 예정) |
-| 게이미피케이션 규칙 정의서 | `docs/gamification_rules.md` | EXP 공식·레벨업 테이블 (작성 예정) |
-| 칭호·페널티·휴면 규칙 정의서 | `docs/title_penalty_rules.md` | 칭호 목록·강등 규칙 (작성 예정) |
-| Google Calendar API 공식 문서 | https://developers.google.com/calendar | 외부 API 연동 참고 |
-
 ---
 
 ## 2. 일반적인 사항
