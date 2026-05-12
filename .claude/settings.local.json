@@ -23,6 +23,8 @@
       "Bash(rm -rf *)",
       "Bash(git reset --hard *)",
       "Bash(gh pr merge *)",
+      "Edit(.claude/settings.local.json)",
+      "Write(.claude/settings.local.json)",
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./secrets/**)"
