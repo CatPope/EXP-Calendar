@@ -64,6 +64,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 필수 섹션: `## Part`, `## 요구사항 ID`, `## Summary`, `## Test plan`
 - `gh pr create` 사용 시 `--body`에 템플릿 전체 구조를 포함한다 (빈 `--body`로 템플릿 덮어쓰기 금지)
 - CI 검증 항목: Conventional Commits 형식, CLAUDE.md 300줄 제한, JS 구문 검사, 시크릿 스캔
+- **금지**: `gh pr merge` — PR 병합은 반드시 GitHub 웹에서 사용자가 직접 수행
 
 ## UI Theme
 

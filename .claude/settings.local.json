@@ -21,8 +21,8 @@
     ],
     "deny": [
       "Bash(rm -rf *)",
-      "Bash(git push --force *)",
       "Bash(git reset --hard *)",
+      "Bash(gh pr merge *)",
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./secrets/**)"
