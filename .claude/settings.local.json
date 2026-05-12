@@ -15,7 +15,8 @@
       "Edit(.claude/compact.md)",
       "Write(.claude/compact.md)",
       "Bash(gh workflow:*)",
-      "Bash(gh pr:*)"
+      "Bash(gh pr:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [
       "Bash(rm -rf *)",
