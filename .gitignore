@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+frontend/.next/
+frontend/out/
+backend/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+coverage/
+*.cover
+*.out
+
+# Logs
+*.log
+npm-debug.log*
+
+# PWA
+sw.js
+workbox-*.js
+
+# OMC / Claude Code
+**/.omc/

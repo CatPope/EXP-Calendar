@@ -1,0 +1,190 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: ai-pr-review-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    name: AI PR Review
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build PR diff
+        id: diff
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          API_URL: ${{ github.api_url }}
+          REPO: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          curl -sSf \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github.v3.diff" \
+            "${API_URL}/repos/${REPO}/compare/${BASE_REF}...${HEAD_SHA}" \
+            > pr.diff
+          echo "diff_path=pr.diff" >> "$GITHUB_OUTPUT"
+
+      - name: Conventional Commits check
+        id: commit_check
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          TYPES="feat|fix|docs|refactor|chore|test|style|perf|ci|build|revert"
+          BAD=""
+          while IFS= read -r line; do
+            SUBJECT=$(echo "$line" | sed 's/^[a-f0-9]* //')
+            if ! echo "$SUBJECT" | grep -qE "^($TYPES)(\([a-z][a-z0-9-]*\))?(!)?: .{1,50}"; then
+              BAD="${BAD}\n- \`${line}\`"
+            fi
+          done <<< "$(git log --oneline origin/${BASE_REF}..${HEAD_SHA})"
+          if [ -n "$BAD" ]; then
+            echo "status=fail" >> "$GITHUB_OUTPUT"
+            printf '%b' "$BAD" > commit-violations.txt
+          else
+            echo "status=pass" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: CLAUDE.md line count check
+        id: claudemd_check
+        run: |
+          if [ -f CLAUDE.md ]; then
+            LINES=$(wc -l < CLAUDE.md)
+            if [ "$LINES" -gt 300 ]; then
+              echo "status=fail" >> "$GITHUB_OUTPUT"
+              echo "lines=$LINES" >> "$GITHUB_OUTPUT"
+            else
+              echo "status=pass" >> "$GITHUB_OUTPUT"
+              echo "lines=$LINES" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "status=skip" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: JS syntax validation
+        id: js_check
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          JS_FILES=$(git diff --name-only origin/${BASE_REF}..${HEAD_SHA} -- '*.mjs' '*.js' || true)
+          BAD=""
+          COUNT=0
+          for f in $JS_FILES; do
+            if [ -f "$f" ]; then
+              COUNT=$((COUNT + 1))
+              if ! node --check "$f" 2>/dev/null; then
+                BAD="${BAD}\n- \`${f}\`"
+              fi
+            fi
+          done
+          if [ -n "$BAD" ]; then
+            echo "status=fail" >> "$GITHUB_OUTPUT"
+            printf '%b' "$BAD" > js-violations.txt
+          else
+            echo "status=pass" >> "$GITHUB_OUTPUT"
+          fi
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: Review with Fallback
+        env:
+          DIFF_PATH: ${{ steps.diff.outputs.diff_path }}
+        run: node .github/scripts/review-fallback.mjs "${DIFF_PATH}" > fallback-review.md
+
+      - name: Compose PR comment
+        env:
+          COMMIT_CHECK: ${{ steps.commit_check.outputs.status }}
+          CLAUDEMD_CHECK: ${{ steps.claudemd_check.outputs.status }}
+          CLAUDEMD_LINES: ${{ steps.claudemd_check.outputs.lines }}
+          JS_CHECK: ${{ steps.js_check.outputs.status }}
+          JS_COUNT: ${{ steps.js_check.outputs.count }}
+        run: |
+          {
+            echo "## AI CI Review"
+            echo
+            echo "### Automated Checks"
+            echo
+            echo "| Check | Result |"
+            echo "|-------|--------|"
+
+            if [ "${COMMIT_CHECK}" = "pass" ]; then
+              echo "| Conventional Commits | PASS |"
+            else
+              echo "| Conventional Commits | **FAIL** |"
+            fi
+
+            if [ "${CLAUDEMD_CHECK}" = "pass" ]; then
+              echo "| CLAUDE.md line count | PASS (${CLAUDEMD_LINES}/300) |"
+            elif [ "${CLAUDEMD_CHECK}" = "fail" ]; then
+              echo "| CLAUDE.md line count | **FAIL** (${CLAUDEMD_LINES}/300) |"
+            else
+              echo "| CLAUDE.md line count | SKIP (no file) |"
+            fi
+
+            if [ "${JS_CHECK}" = "pass" ]; then
+              echo "| JS syntax | PASS (${JS_COUNT} files) |"
+            elif [ "${JS_CHECK}" = "fail" ]; then
+              echo "| JS syntax | **FAIL** |"
+            else
+              echo "| JS syntax | SKIP |"
+            fi
+            echo
+
+            if [ "${COMMIT_CHECK}" = "fail" ] && [ -f commit-violations.txt ]; then
+              echo "#### Conventional Commits violations"
+              cat commit-violations.txt
+              echo
+            fi
+
+            if [ "${JS_CHECK}" = "fail" ] && [ -f js-violations.txt ]; then
+              echo "#### JS syntax errors"
+              cat js-violations.txt
+              echo
+            fi
+
+            echo "### Fallback (Rule-based)"
+            cat fallback-review.md
+            echo
+            echo "---"
+            echo "_Auto-generated comment._"
+          } > ai-review-comment.md
+
+      - name: Find existing AI comment
+        id: find_comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: "## AI CI Review"
+
+      - name: Create or update AI comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find_comment.outputs.comment-id }}
+          body-path: ai-review-comment.md
+          edit-mode: replace
