@@ -41,8 +41,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 개발 규칙
 
 - 기능 구현 시 **항상 subagent(Agent 도구)를 활용**하여 병렬로 작업한다
+- subagent는 항상 team skill을 사용해야한다.
 - 독립적인 파일/모듈은 여러 subagent를 동시에 spawning하여 개발 속도를 높인다
-- 예: frontend와 backend를 각각 별도 subagent로 동시 구현
+- 예: Part B 구현 시 → EXP 계산 모듈, 레벨업 모듈, 포인트 모듈을 각각 별도 subagent로 동시 구현
+- 예: Part A 구현 시 → OAuth 핸들러(BE), 토큰 관리(BE), 로그인 페이지(FE)를 병렬 처리
 
 ## Git Convention
 
