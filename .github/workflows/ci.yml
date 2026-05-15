@@ -62,7 +62,7 @@ jobs:
           fi
         working-directory: .
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         if: steps.check.outputs.skip != 'true'
         with:
           go-version: "1.22"
