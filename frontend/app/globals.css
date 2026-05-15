@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #0D1117;
+  --bg-surface: #161B22;
+  --bg-surface-2: #21262D;
+  --border-default: #30363D;
+  --text-1: #E6EDF3;
+  --text-2: #8B949E;
+  --accent: #8B5CF6;
+  --success: #06D6A0;
+  --gold: #FFD700;
+  --danger: #FF6B6B;
+}
+
+html,
+body {
+  background-color: var(--bg-base);
+  color: var(--text-1);
+  font-family: Inter, "Noto Sans KR", system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@layer components {
+  .card {
+    @apply bg-surface border border-border rounded-xl p-4;
+  }
+  .btn {
+    @apply px-3 py-2 rounded-md text-sm font-medium transition-colors;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-white hover:bg-accent/80;
+  }
+  .btn-success {
+    @apply btn bg-success text-base hover:bg-success/80;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:bg-danger/80;
+  }
+  .btn-ghost {
+    @apply btn bg-surface-2 text-text-1 hover:bg-border;
+  }
+  .input {
+    @apply bg-surface-2 border border-border rounded-md px-3 py-2 text-sm text-text-1 placeholder:text-text-2 focus:outline-none focus:ring-2 focus:ring-accent;
+  }
+}
+
+/* scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 4px;
+}

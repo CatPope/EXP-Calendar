@@ -1,0 +1,23 @@
+# VCS / IDE
+.git
+.gitignore
+.idea
+.vscode
+.vs
+
+# Build artifacts
+bin/
+tmp/
+server
+server.exe
+*.exe
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Docs (CLAUDE.md 는 컨테이너 내부에서 불필요)
+*.md

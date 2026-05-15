@@ -1,11 +1,15 @@
 # Dependencies
 node_modules/
+frontend/node_modules/
 vendor/
 
 # Build output
 frontend/.next/
 frontend/out/
 backend/bin/
+backend/server
+backend/server.exe
+backend/tmp/
 *.exe
 *.dll
 *.so
@@ -20,6 +24,7 @@ backend/bin/
 # IDE
 .vscode/
 .idea/
+.vs/
 *.swp
 *.swo
 *~
