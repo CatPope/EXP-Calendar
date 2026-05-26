@@ -29,6 +29,9 @@ export interface User {
   daily_points_cap: number;
   account_status: string;
   persona_character_type: CharacterType | string;
+  persona_definition: string;
+  persona_tokens: number;
+  tendency?: Tendency | string;
   equipped_title: Title | null;
 }
 

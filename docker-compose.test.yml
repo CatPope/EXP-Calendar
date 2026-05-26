@@ -1,0 +1,54 @@
+services:
+  test-db:
+    image: pgvector/pgvector:pg15
+    container_name: exp-calendar-test-db
+    environment:
+      POSTGRES_USER: exp
+      POSTGRES_PASSWORD: exp
+      POSTGRES_DB: expcalendar_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exp -d expcalendar_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+    ports:
+      - "5433:5432"
+
+  test-backend:
+    build:
+      context: ./backend
+    container_name: exp-calendar-test-backend
+    environment:
+      DATABASE_URL: postgres://exp:exp@test-db:5432/expcalendar_test?sslmode=disable
+      JWT_SECRET: test-secret-key-for-integration-only
+      JWT_ACCESS_TTL_MIN: "60"
+      JWT_REFRESH_TTL_DAYS: "7"
+      DEV_MODE: "true"
+      ALLOWED_ORIGINS: "*"
+      GEMINI_API_KEY: ""
+      LLM_MODEL: gemini-2.0-flash
+    depends_on:
+      test-db:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+
+  test-runner:
+    image: golang:1.22-alpine
+    container_name: exp-calendar-test-runner
+    working_dir: /work
+    volumes:
+      - ./backend/tests:/work
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      API_BASE_URL: http://test-backend:8080
+      GOFLAGS: "-mod=mod"
+    depends_on:
+      test-backend:
+        condition: service_started
+    command: ["sh", "-c", "echo 'test-runner ready'; sleep infinity"]
+
+volumes:
+  go-mod-cache:

@@ -233,15 +233,30 @@ export const Api = {
     }),
 
   // persona / showcase
-  generatePersona: (text: string, character_type?: CharacterType) =>
-    apiFetch<{ llm_output: string; character_type: string }>(
+  generatePersona: (
+    text: string,
+    opts?: { character_type?: CharacterType; definition?: string }
+  ) =>
+    apiFetch<{ llm_output: string; character_type: string; used_definition: boolean }>(
       "/api/persona/generate",
-      { method: "POST", body: JSON.stringify({ text, character_type }) }
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text,
+          character_type: opts?.character_type,
+          definition: opts?.definition
+        })
+      }
     ),
   postShowcase: (text: string) =>
-    apiFetch<{ showcase_text: string; llm_output: string }>(
+    apiFetch<{ showcase_text: string; llm_output: string; used_definition: boolean }>(
       "/api/persona/showcase",
       { method: "POST", body: JSON.stringify({ text }) }
+    ),
+  definePersona: (definition: string) =>
+    apiFetch<{ persona_definition: string; persona_tokens: number }>(
+      "/api/persona/define",
+      { method: "POST", body: JSON.stringify({ definition }) }
     ),
   listShowcase: () => apiFetch<ShowcaseSummary[]>("/api/showcase"),
   showcaseDetail: (user_id: string) =>

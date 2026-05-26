@@ -49,7 +49,10 @@
     "daily_points_cap": 200,
     "account_status": "ACTIVE",
     "persona_character_type": "default",
-    "equipped_title": { "id": "uuid", "name": "string", "grade": "RARE", "color_hex": "#8B5CF6", "negative_modifier": null } 
+    "persona_definition": "",
+    "persona_tokens": 0,
+    "tendency": "NORMAL",
+    "equipped_title": { "id": "uuid", "name": "string", "grade": "RARE", "color_hex": "#8B5CF6", "negative_modifier": null }
   }
 }
 ```
@@ -76,6 +79,8 @@
 - res: `{ data: { ok: true } }`
 
 ### POST /api/schedules/:id/complete
+- 일정 due_date(KST 일자)가 오늘보다 미래면 거부: `400 NOT_YET_DUE`
+- 이미 완료 상태면 거부: `409 ALREADY_COMPLETED`
 - res:
 ```json
 {
@@ -161,14 +166,24 @@ UserTitle:
 
 ## 7. Persona / Showcase
 
+> **흐름**: ① 상점에서 `캐릭터 설정권` 구매(`persona_tokens += 1`) → ② `POST /api/persona/define` 으로 자유 정의(`persona_tokens -= 1`) → ③ `/api/persona/generate` 또는 `/showcase`가 저장된 definition을 Gemini Flash system prompt로 사용. 키 미설정 시 mock 폴백.
+
+### POST /api/persona/define
+- body: `{ "definition": "string" }`  ← 캐릭터 성격·역사(10~2000자)
+- res: `{ data: { persona_definition: "string", persona_tokens: N } }`
+- 전제: `persona_tokens >= 1`. 부족 시 `400 NO_PERSONA_TOKEN`. 1회 호출 = 1토큰 소모.
+- 동작: definition을 사용자 행에 저장하고 토큰 1 차감 (단일 트랜잭션).
+
 ### POST /api/persona/generate
-- body: `{ "text": "string", "character_type"?: "default"|"tsundere"|"knight" }`
-- res: `{ data: { llm_output: "string", character_type: "string" } }`
-- OPENAI_API_KEY 없을 시 deterministic mock 사용
+- body: `{ "text": "string", "character_type"?: "string", "definition"?: "string" }`
+  - `definition` 제공 시 미리보기용 임시 override (저장 X). 미제공 시 저장된 `persona_definition` 사용.
+- res: `{ data: { llm_output: "string", character_type: "string", used_definition: bool } }`
+- `GEMINI_API_KEY` 없을 시 deterministic mock 사용
 
 ### POST /api/persona/showcase
 - body: `{ "text": "string" }`  ← 사용자가 쇼케이스에 게시할 원문
-- res: `{ data: { showcase_text, llm_output } }`
+- res: `{ data: { showcase_text, llm_output, used_definition: bool } }`
+- **항상 저장된 `persona_definition` 사용** — 클라이언트의 character_type/definition hint 무시 (FR-SHOP-03 monetization 경계)
 
 ### GET /api/showcase/:user_id
 - res:

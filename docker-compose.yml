@@ -25,6 +25,7 @@ services:
       - ./.env
     environment:
       DATABASE_URL: postgres://exp:exp@db:5432/expcalendar?sslmode=disable
+      LLM_MODEL: gemini-2.5-flash
     depends_on:
       db:
         condition: service_healthy
@@ -35,11 +36,17 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+        NEXT_PUBLIC_DEV_MODE: "true"
     container_name: exp-calendar-frontend
     env_file:
       - ./.env
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+      NEXT_PUBLIC_DEV_MODE: "true"
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
     depends_on:
       - backend
     ports:

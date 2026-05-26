@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/expcalendar/backend/internal/middleware"
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,33 +52,39 @@ func (h *ShopHandler) Purchase(c *gin.Context) {
 		return
 	}
 
-	remaining, err := h.Users.SpendPoints(c.Request.Context(), uid, it.Price)
-	if err != nil {
-		RespondErr(c, http.StatusBadRequest, "INSUFFICIENT_POINTS", "not enough points")
-		return
-	}
-	purchase, err := h.Shop.RecordPurchase(c.Request.Context(), uid, it.ID, it.Price)
+	ctx := c.Request.Context()
+	tx, err := h.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	// Side-effect: PERSONA items set the user's persona_character_type.
-	if it.Category == "PERSONA" {
-		ct := personaFromEffect(it.Effect)
-		if ct != "" {
-			_ = h.Users.SetPersonaCharacterType(c.Request.Context(), uid, ct)
+	defer tx.Rollback(ctx)
+
+	remaining, err := h.Users.SpendPointsTx(ctx, tx, uid, it.Price)
+	if err != nil {
+		RespondErr(c, http.StatusBadRequest, "INSUFFICIENT_POINTS", "not enough points")
+		return
+	}
+	purchase, err := h.Shop.RecordPurchaseTx(ctx, tx, uid, it.ID, it.Price)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	// Side-effect: 캐릭터 설정권 (effect=persona:token) grants a 1-shot persona
+	// definition write. Other PERSONA-category items would be no-ops here.
+	if it.Category == "PERSONA" && it.Effect == "persona:token" {
+		if err := h.Users.AddPersonaTokens(ctx, tx, uid, 1); err != nil {
+			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+			return
 		}
 	}
+	if err := tx.Commit(ctx); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+
 	Respond(c, http.StatusOK, gin.H{
 		"purchase":         purchase,
 		"remaining_points": remaining,
 	})
-}
-
-func personaFromEffect(effect string) string {
-	// effect like "persona:tsundere"
-	if i := strings.Index(effect, ":"); i > 0 {
-		return strings.TrimSpace(effect[i+1:])
-	}
-	return ""
 }

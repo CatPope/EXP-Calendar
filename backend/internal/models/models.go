@@ -21,6 +21,8 @@ type User struct {
 	DailyPointsEarnedDate time.Time `json:"-"`
 	Tendency              string    `json:"tendency"`
 	PersonaCharacterType  string    `json:"persona_character_type"`
+	PersonaDefinition     string    `json:"persona_definition"`
+	PersonaTokens         int       `json:"persona_tokens"`
 	PersonaShowcaseText   string    `json:"persona_showcase_text"`
 	PersonaLLMOutput      string    `json:"persona_llm_output"`
 	CreatedAt             time.Time `json:"created_at"`

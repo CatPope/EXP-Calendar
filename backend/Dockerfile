@@ -5,9 +5,8 @@ WORKDIR /src
 RUN apk add --no-cache git ca-certificates tzdata
 
 COPY go.mod go.sum* ./
-RUN go mod download || true
-
 COPY . .
+RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server
 
 FROM alpine:3.20

@@ -17,14 +17,16 @@ func NewUserRepo(p *pgxpool.Pool) *UserRepo { return &UserRepo{Pool: p} }
 
 const userSelect = `SELECT id, email, display_name, google_sub, account_status, level,
 	total_exp, current_points, daily_points_earned, daily_points_earned_date,
-	tendency, persona_character_type, persona_showcase_text, persona_llm_output,
+	tendency, persona_character_type, persona_definition, persona_tokens,
+	persona_showcase_text, persona_llm_output,
 	created_at, updated_at FROM users`
 
 func scanUser(row pgx.Row) (*models.User, error) {
 	var u models.User
 	err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &u.GoogleSub, &u.AccountStatus, &u.Level,
 		&u.TotalExp, &u.CurrentPoints, &u.DailyPointsEarned, &u.DailyPointsEarnedDate,
-		&u.Tendency, &u.PersonaCharacterType, &u.PersonaShowcaseText, &u.PersonaLLMOutput,
+		&u.Tendency, &u.PersonaCharacterType, &u.PersonaDefinition, &u.PersonaTokens,
+		&u.PersonaShowcaseText, &u.PersonaLLMOutput,
 		&u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -83,9 +85,79 @@ func (r *UserRepo) SetPersonaShowcase(ctx context.Context, id uuid.UUID, showcas
 	return err
 }
 
+// AddPersonaTokens increments persona_tokens (used by the PERSONA shop item).
+func (r *UserRepo) AddPersonaTokens(ctx context.Context, tx pgx.Tx, id uuid.UUID, n int) error {
+	if n == 0 {
+		return nil
+	}
+	_, err := tx.Exec(ctx, `UPDATE users SET persona_tokens = persona_tokens + $1, updated_at=now() WHERE id=$2`, n, id)
+	return err
+}
+
+// EnsureMinPersonaTokens tops up persona_tokens to at least `min` (no-op if
+// already at or above). Used by dev-login so developers don't have to grind
+// the shop just to exercise the persona flow.
+func (r *UserRepo) EnsureMinPersonaTokens(ctx context.Context, id uuid.UUID, min int) error {
+	_, err := r.Pool.Exec(ctx,
+		`UPDATE users SET persona_tokens = $1, updated_at=now()
+		 WHERE id=$2 AND persona_tokens < $1`,
+		min, id)
+	return err
+}
+
+// EnsureMinPoints tops up current_points to at least `min` (no-op if already
+// at or above). Used by dev-login so developers can exercise shop/purchase
+// flows without grinding schedule completions.
+func (r *UserRepo) EnsureMinPoints(ctx context.Context, id uuid.UUID, min int) error {
+	_, err := r.Pool.Exec(ctx,
+		`UPDATE users SET current_points = $1, updated_at=now()
+		 WHERE id=$2 AND current_points < $1`,
+		min, id)
+	return err
+}
+
+// ConsumePersonaTokenSetDefinition atomically (1) requires persona_tokens >= 1,
+// (2) decrements it, (3) overwrites persona_definition. Returns the new token
+// balance. Returns (-1, ErrNoTokens) if the user has none.
+func (r *UserRepo) ConsumePersonaTokenSetDefinition(ctx context.Context, id uuid.UUID, definition string) (int, error) {
+	var remaining int
+	err := r.Pool.QueryRow(ctx,
+		`UPDATE users
+		   SET persona_tokens     = persona_tokens - 1,
+		       persona_definition = $1,
+		       updated_at         = now()
+		 WHERE id = $2 AND persona_tokens >= 1
+		 RETURNING persona_tokens`,
+		definition, id).Scan(&remaining)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return -1, ErrNoTokens
+	}
+	if err != nil {
+		return -1, err
+	}
+	return remaining, nil
+}
+
+// ErrNoTokens is returned when a persona definition write is attempted without
+// a 캐릭터 설정권 in stock.
+var ErrNoTokens = errors.New("no persona tokens")
+
 func (r *UserRepo) SpendPoints(ctx context.Context, id uuid.UUID, amount int) (int, error) {
 	var remaining int
 	err := r.Pool.QueryRow(ctx,
+		`UPDATE users SET current_points = current_points - $1, updated_at=now()
+		 WHERE id=$2 AND current_points >= $1 RETURNING current_points`,
+		amount, id).Scan(&remaining)
+	if err != nil {
+		return 0, err
+	}
+	return remaining, nil
+}
+
+// SpendPointsTx is SpendPoints inside a caller-owned transaction.
+func (r *UserRepo) SpendPointsTx(ctx context.Context, tx pgx.Tx, id uuid.UUID, amount int) (int, error) {
+	var remaining int
+	err := tx.QueryRow(ctx,
 		`UPDATE users SET current_points = current_points - $1, updated_at=now()
 		 WHERE id=$2 AND current_points >= $1 RETURNING current_points`,
 		amount, id).Scan(&remaining)

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -116,6 +117,10 @@ func (h *SchedulesHandler) Patch(c *gin.Context) {
 	}
 	s, err := h.Schedules.Update(c.Request.Context(), uid, id, patch)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			RespondErr(c, http.StatusNotFound, "NOT_FOUND", "schedule not found")
+			return
+		}
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
@@ -159,6 +164,15 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		RespondErr(c, http.StatusNotFound, "NOT_FOUND", "schedule not found")
 		return
 	}
+
+	// Block completion before the due date arrives (KST date comparison).
+	dueKST := sched.DueDate.In(today.Location())
+	dueDay := time.Date(dueKST.Year(), dueKST.Month(), dueKST.Day(), 0, 0, 0, 0, today.Location())
+	if dueDay.After(today) {
+		RespondErr(c, http.StatusBadRequest, "NOT_YET_DUE", "예정일이 되기 전에는 완료할 수 없습니다.")
+		return
+	}
+
 	u, err := h.Users.GetByID(ctx, uid)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())

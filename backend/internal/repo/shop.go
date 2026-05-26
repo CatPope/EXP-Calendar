@@ -5,6 +5,7 @@ import (
 
 	"github.com/expcalendar/backend/internal/models"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -41,6 +42,19 @@ func (r *ShopRepo) GetItem(ctx context.Context, id uuid.UUID) (*models.Item, err
 
 func (r *ShopRepo) RecordPurchase(ctx context.Context, userID, itemID uuid.UUID, pricePaid int) (*models.Purchase, error) {
 	row := r.Pool.QueryRow(ctx,
+		`INSERT INTO purchases(user_id, item_id, price_paid) VALUES($1,$2,$3)
+		 RETURNING id, item_id, price_paid, purchased_at`,
+		userID, itemID, pricePaid)
+	p := &models.Purchase{}
+	if err := row.Scan(&p.ID, &p.ItemID, &p.PricePaid, &p.PurchasedAt); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// RecordPurchaseTx is RecordPurchase inside a caller-owned transaction.
+func (r *ShopRepo) RecordPurchaseTx(ctx context.Context, tx pgx.Tx, userID, itemID uuid.UUID, pricePaid int) (*models.Purchase, error) {
+	row := tx.QueryRow(ctx,
 		`INSERT INTO purchases(user_id, item_id, price_paid) VALUES($1,$2,$3)
 		 RETURNING id, item_id, price_paid, purchased_at`,
 		userID, itemID, pricePaid)

@@ -16,7 +16,7 @@ type Config struct {
 	JWTAccessTTLMin      int
 	JWTRefreshTTLDays    int
 	GoogleOAuthClientID  string
-	OpenAIAPIKey         string
+	GeminiAPIKey         string
 	LLMModel             string
 	DevMode              bool
 	AllowedOrigins       []string
@@ -40,8 +40,8 @@ func Load() *Config {
 		JWTAccessTTLMin:     atoi(getenv("JWT_ACCESS_TTL_MIN", "60"), 60),
 		JWTRefreshTTLDays:   atoi(getenv("JWT_REFRESH_TTL_DAYS", "14"), 14),
 		GoogleOAuthClientID: getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
-		OpenAIAPIKey:        getenv("OPENAI_API_KEY", ""),
-		LLMModel:            getenv("LLM_MODEL", "gpt-4o-mini"),
+		GeminiAPIKey:        getenv("GEMINI_API_KEY", ""),
+		LLMModel:            getenv("LLM_MODEL", "gemini-2.0-flash"),
 		DevMode:             strings.EqualFold(getenv("DEV_MODE", "true"), "true"),
 		AllowedOrigins:      splitCsv(getenv("ALLOWED_ORIGINS", "http://localhost:3000")),
 		MigrationsDir:       getenv("MIGRATIONS_DIR", "migrations"),

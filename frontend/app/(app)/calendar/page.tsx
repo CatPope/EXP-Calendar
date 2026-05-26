@@ -231,6 +231,7 @@ export default function CalendarPage() {
         dateYmd={prefillYmd}
         schedule={editing}
         onSaved={reload}
+        onComplete={onCompleteSchedule}
       />
     </div>
   );

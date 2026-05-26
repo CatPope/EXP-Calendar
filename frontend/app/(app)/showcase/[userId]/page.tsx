@@ -7,6 +7,7 @@ import { useAppStore } from "@/lib/store";
 import type { ShowcaseDetail, User } from "@/lib/types";
 import TitleBadge from "@/components/TitleBadge";
 import GrassGraph from "@/components/GrassGraph";
+import CharacterAvatar from "@/components/CharacterAvatar";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
 
@@ -48,10 +49,13 @@ export default function ShowcaseDetailPage() {
         <>
           <div className="card space-y-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <h1 className="text-xl font-bold">{detail.display_name}</h1>
-                <div className="text-sm text-text-2">
-                  Lv. {detail.level} · 등급 {detail.rating_grade}
+              <div className="flex items-center gap-4">
+                <CharacterAvatar level={detail.level} size={96} withFrame />
+                <div>
+                  <h1 className="text-xl font-bold">{detail.display_name}</h1>
+                  <div className="text-sm text-text-2">
+                    Lv. {detail.level} · 등급 {detail.rating_grade}
+                  </div>
                 </div>
               </div>
               <TitleBadge title={detail.equipped_title} />

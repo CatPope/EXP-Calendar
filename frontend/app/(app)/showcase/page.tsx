@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiFetch, humanizeError } from "@/lib/api";
 import type { ShowcaseSummary } from "@/lib/types";
 import TitleBadge from "@/components/TitleBadge";
+import CharacterAvatar from "@/components/CharacterAvatar";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
 import { ChevronRight } from "lucide-react";
@@ -41,16 +42,17 @@ export default function ShowcaseListPage() {
             <Link
               key={u.user_id}
               href={`/showcase/${u.user_id}`}
-              className="card hover:border-accent transition-colors flex items-center justify-between"
+              className="card hover:border-accent transition-colors flex items-center gap-3"
             >
-              <div>
-                <div className="font-semibold">{u.display_name}</div>
+              <CharacterAvatar level={u.level} size={48} />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate">{u.display_name}</div>
                 <div className="text-xs text-text-2">Lv. {u.level}</div>
                 <div className="mt-2">
                   <TitleBadge title={u.equipped_title} />
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-text-2" />
+              <ChevronRight className="h-5 w-5 text-text-2 shrink-0" />
             </Link>
           ))}
         </div>

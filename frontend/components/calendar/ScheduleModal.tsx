@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import type { Difficulty, Schedule } from "@/lib/types";
@@ -17,6 +17,7 @@ interface Props {
   /** existing schedule to edit */
   schedule?: Schedule | null;
   onSaved: () => void;
+  onComplete?: (s: Schedule) => Promise<void> | void;
 }
 
 export default function ScheduleModal({
@@ -24,7 +25,8 @@ export default function ScheduleModal({
   onClose,
   dateYmd,
   schedule,
-  onSaved
+  onSaved,
+  onComplete
 }: Props) {
   const pushToast = useAppStore((s) => s.pushToast);
   const isEdit = !!schedule;
@@ -92,6 +94,17 @@ export default function ScheduleModal({
     }
   }
 
+  async function onCompleteClick() {
+    if (!schedule || !onComplete) return;
+    setBusy(true);
+    try {
+      await onComplete(schedule);
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onDelete() {
     if (!schedule) return;
     if (!confirm("이 일정을 삭제할까요?")) return;
@@ -124,6 +137,17 @@ export default function ScheduleModal({
               leading={<Trash2 className="h-3 w-3" />}
             >
               삭제
+            </Button>
+          )}
+          {isEdit && schedule?.status !== "COMPLETED" && onComplete && (
+            <Button
+              variant="success"
+              size="md"
+              onClick={onCompleteClick}
+              loading={busy}
+              leading={<Check className="h-4 w-4" />}
+            >
+              완료
             </Button>
           )}
           <Button variant="ghost" size="md" onClick={onClose} disabled={busy}>

@@ -110,6 +110,7 @@ App Router 구조에서 **라우트 그룹 `(app)/`이 인증 경계**다. `(app
 
 ## 개발 규칙
 
+- **요구사항서(`docs/for_ai/planning/requirements_ieee830.md`)는 절대 수정 금지**. SRS는 권위 문서이며 인간 의사결정 산출물이다. 코드가 SRS와 어긋날 때는 코드를 고치고, SRS 변경이 필요해 보이면 사용자에게 먼저 확인. 임의 갱신·정정·문구 다듬기 모두 금지
 - 기능 구현 시 **항상 subagent(Agent 도구)를 활용**하여 병렬로 작업한다. 독립적인 모듈(예: backend vs frontend)은 동시 spawn
 - 게임 규칙/공식 변경 시 `docs/for_ai/spec/api_and_rules.md`와 `backend/internal/game/engine.go`를 **함께** 갱신. 둘 중 하나만 바뀌면 SSoT가 깨진다
 - API 엔드포인트 추가/변경 시 → SSoT 문서 + `backend/internal/server/router.go` + `frontend/lib/api.ts`의 `Api.*` 3곳 동시 갱신

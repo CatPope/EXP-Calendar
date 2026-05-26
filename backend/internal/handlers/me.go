@@ -50,6 +50,8 @@ func (h *MeHandler) Get(c *gin.Context) {
 		"daily_points_cap":       game.DailyPointsCap(),
 		"account_status":         u.AccountStatus,
 		"persona_character_type": u.PersonaCharacterType,
+		"persona_definition":     u.PersonaDefinition,
+		"persona_tokens":         u.PersonaTokens,
 		"equipped_title":         equippedJSON,
 		"tendency":               u.Tendency,
 	})
