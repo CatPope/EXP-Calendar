@@ -1,8 +1,8 @@
 # Build artifacts
 bin/
 tmp/
-server
-server.exe
+/server
+/server.exe
 *.exe
 *.test
 *.out
