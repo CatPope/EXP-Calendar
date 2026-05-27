@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/expcalendar/backend/internal/auth"
@@ -8,6 +9,7 @@ import (
 	"github.com/expcalendar/backend/internal/models"
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
@@ -35,10 +37,31 @@ type refreshReq struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type accessTokenResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+type loginUser struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	Level       int       `json:"level"`
+}
+
+type loginResponse struct {
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	User         loginUser `json:"user"`
+}
+
 func (h *AuthHandler) Google(c *gin.Context) {
-	var req googleLoginReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.IDToken == "" {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "id_token required")
+	req, ok := BindAndValidate(c, func(r *googleLoginReq) error {
+		if r.IDToken == "" {
+			return errors.New("id_token required")
+		}
+		return nil
+	})
+	if !ok {
 		return
 	}
 	info, err := auth.VerifyGoogleIDToken(c.Request.Context(), req.IDToken, h.Cfg.GoogleOAuthClientID)
@@ -59,9 +82,13 @@ func (h *AuthHandler) DevLogin(c *gin.Context) {
 		RespondErr(c, http.StatusForbidden, "DEV_MODE_DISABLED", "dev-login disabled")
 		return
 	}
-	var req devLoginReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Email == "" {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "email required")
+	req, ok := BindAndValidate(c, func(r *devLoginReq) error {
+		if r.Email == "" {
+			return errors.New("email required")
+		}
+		return nil
+	})
+	if !ok {
 		return
 	}
 	dn := req.DisplayName
@@ -79,9 +106,13 @@ func (h *AuthHandler) DevLogin(c *gin.Context) {
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	var req refreshReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.RefreshToken == "" {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "refresh_token required")
+	req, ok := BindAndValidate(c, func(r *refreshReq) error {
+		if r.RefreshToken == "" {
+			return errors.New("refresh_token required")
+		}
+		return nil
+	})
+	if !ok {
 		return
 	}
 	uid, exp, err := h.RefreshRepo.Find(c.Request.Context(), req.RefreshToken)
@@ -99,11 +130,11 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "JWT_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, gin.H{"access_token": access})
+	Respond(c, http.StatusOK, accessTokenResponse{AccessToken: access})
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	Respond(c, http.StatusOK, gin.H{"ok": true})
+	Respond(c, http.StatusOK, okResponse{OK: true})
 }
 
 func (h *AuthHandler) issueTokens(c *gin.Context, u *models.User) {
@@ -121,14 +152,14 @@ func (h *AuthHandler) issueTokens(c *gin.Context, u *models.User) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, gin.H{
-		"access_token":  access,
-		"refresh_token": refresh,
-		"user": gin.H{
-			"id":           u.ID,
-			"email":        u.Email,
-			"display_name": u.DisplayName,
-			"level":        u.Level,
+	Respond(c, http.StatusOK, loginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User: loginUser{
+			ID:          u.ID,
+			Email:       u.Email,
+			DisplayName: u.DisplayName,
+			Level:       u.Level,
 		},
 	})
 }

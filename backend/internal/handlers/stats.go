@@ -17,7 +17,11 @@ type StatsHandler struct {
 func NewStatsHandler(r *repo.RewardRepo) *StatsHandler { return &StatsHandler{Rewards: r} }
 
 func (h *StatsHandler) Grass(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	days := 365
 	if v := c.Query("days"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 730 {
@@ -38,7 +42,11 @@ func (h *StatsHandler) Grass(c *gin.Context) {
 }
 
 func (h *StatsHandler) Series(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	period := c.DefaultQuery("period", "week")
 	var from, to time.Time
 	now := timeNow()

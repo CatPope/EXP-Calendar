@@ -21,8 +21,18 @@ func NewQuestsHandler(p *pgxpool.Pool, q *repo.QuestRepo, u *repo.UserRepo, s *r
 	return &QuestsHandler{Pool: p, Quests: q, Users: u, Schedules: s}
 }
 
+type questCompleteResponse struct {
+	Completed     bool `json:"completed"`
+	RewardPoints  int  `json:"reward_points"`
+	CurrentPoints int  `json:"current_points"`
+}
+
 func (h *QuestsHandler) Today(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	today := kstToday()
 	// Pre-evaluate auto-completions before listing.
 	if n, _ := h.Schedules.CountAddedOn(c.Request.Context(), uid, today); n >= 2 {
@@ -40,7 +50,11 @@ func (h *QuestsHandler) Today(c *gin.Context) {
 }
 
 func (h *QuestsHandler) Complete(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	qt := c.Param("quest_type")
 	switch qt {
 	case "ADD_PLAN", "COMPLETE_PLAN", "VISIT_SHOWCASE":
@@ -70,7 +84,7 @@ func (h *QuestsHandler) Complete(c *gin.Context) {
 	}
 
 	// Always re-read current user state.
-	u, err := getUserTx(ctx, tx, uid)
+	u, err := h.Users.GetByIDTx(ctx, tx, uid)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
@@ -94,9 +108,9 @@ func (h *QuestsHandler) Complete(c *gin.Context) {
 		return
 	}
 	final, _ := h.Users.GetByID(ctx, uid)
-	Respond(c, http.StatusOK, gin.H{
-		"completed":      true,
-		"reward_points":  granted,
-		"current_points": final.CurrentPoints,
+	Respond(c, http.StatusOK, questCompleteResponse{
+		Completed:     true,
+		RewardPoints:  granted,
+		CurrentPoints: final.CurrentPoints,
 	})
 }

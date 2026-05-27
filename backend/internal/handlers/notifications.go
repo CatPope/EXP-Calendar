@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/expcalendar/backend/internal/middleware"
@@ -25,15 +26,23 @@ type subscribeReq struct {
 }
 
 func (h *NotificationsHandler) Subscribe(c *gin.Context) {
-	uid := middleware.MustUserID(c)
-	var req subscribeReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Endpoint == "" {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "endpoint required")
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *subscribeReq) error {
+		if r.Endpoint == "" {
+			return errors.New("endpoint required")
+		}
+		return nil
+	})
+	if !ok {
 		return
 	}
 	if err := h.Push.Subscribe(c.Request.Context(), uid, req.Endpoint, req.Keys.P256dh, req.Keys.Auth); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, gin.H{"ok": true})
+	Respond(c, http.StatusOK, okResponse{OK: true})
 }

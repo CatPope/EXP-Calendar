@@ -43,8 +43,25 @@ func AuthRequired(jwtMgr *auth.JWTManager) gin.HandlerFunc {
 }
 
 // MustUserID extracts the authenticated user id stored by AuthRequired.
+// Kept for backwards compatibility; new code should prefer GetUserID.
 func MustUserID(c *gin.Context) uuid.UUID {
 	v, _ := c.Get(CtxUserIDKey)
 	uid, _ := v.(uuid.UUID)
 	return uid
+}
+
+// GetUserID is the safe extraction variant: returns (uid, true) when present
+// and a non-nil UUID, otherwise (uuid.Nil, false). Handlers should treat the
+// false branch as 401 UNAUTHORIZED — it indicates AuthRequired did not run
+// or the value was overwritten.
+func GetUserID(c *gin.Context) (uuid.UUID, bool) {
+	v, exists := c.Get(CtxUserIDKey)
+	if !exists {
+		return uuid.Nil, false
+	}
+	uid, ok := v.(uuid.UUID)
+	if !ok || uid == uuid.Nil {
+		return uuid.Nil, false
+	}
+	return uid, true
 }

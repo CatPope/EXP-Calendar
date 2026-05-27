@@ -22,14 +22,25 @@ func NewShowcaseHandler(u *repo.UserRepo, t *repo.TitleRepo, r *repo.RewardRepo,
 	return &ShowcaseHandler{Users: u, Titles: t, Rewards: r, Quests: q}
 }
 
+type recommendationRow struct {
+	UserID        uuid.UUID `json:"user_id"`
+	DisplayName   string    `json:"display_name"`
+	Level         int       `json:"level"`
+	EquippedTitle any       `json:"equipped_title"`
+}
+
 func (h *ShowcaseHandler) Recommendations(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	users, err := h.Users.ListShowcaseUsers(c.Request.Context(), uid, 20)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	out := make([]gin.H, 0, len(users))
+	out := make([]recommendationRow, 0, len(users))
 	for _, u := range users {
 		var eq any = nil
 		if ut, _ := h.Titles.EquippedFor(c.Request.Context(), u.ID); ut != nil {
@@ -41,18 +52,34 @@ func (h *ShowcaseHandler) Recommendations(c *gin.Context) {
 				NegativeModifier: ut.NegativeModifier,
 			}
 		}
-		out = append(out, gin.H{
-			"user_id":        u.ID,
-			"display_name":   u.DisplayName,
-			"level":          u.Level,
-			"equipped_title": eq,
+		out = append(out, recommendationRow{
+			UserID:        u.ID,
+			DisplayName:   u.DisplayName,
+			Level:         u.Level,
+			EquippedTitle: eq,
 		})
 	}
 	Respond(c, http.StatusOK, out)
 }
 
+type showcaseProfileResponse struct {
+	UserID              uuid.UUID       `json:"user_id"`
+	DisplayName         string          `json:"display_name"`
+	Level               int             `json:"level"`
+	RatingGrade         string          `json:"rating_grade"`
+	EquippedTitle       any             `json:"equipped_title"`
+	DisplayedTitles     []*models.Title `json:"displayed_titles"`
+	PersonaShowcaseText string          `json:"persona_showcase_text"`
+	PersonaLLMOutput    string          `json:"persona_llm_output"`
+	Grass               map[string]int  `json:"grass"`
+}
+
 func (h *ShowcaseHandler) Get(c *gin.Context) {
-	viewerID := middleware.MustUserID(c)
+	viewerID, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	target, err := uuid.Parse(c.Param("user_id"))
 	if err != nil {
 		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "invalid user_id")
@@ -88,16 +115,16 @@ func (h *ShowcaseHandler) Get(c *gin.Context) {
 		_, _, _ = h.Quests.MarkCompleted(c.Request.Context(), viewerID, kstToday(), "VISIT_SHOWCASE")
 	}
 
-	Respond(c, http.StatusOK, gin.H{
-		"user_id":               u.ID,
-		"display_name":          u.DisplayName,
-		"level":                 u.Level,
-		"rating_grade":          ratingGrade(u.Level),
-		"equipped_title":        equipped,
-		"displayed_titles":      displayed,
-		"persona_showcase_text": u.PersonaShowcaseText,
-		"persona_llm_output":    u.PersonaLLMOutput,
-		"grass":                 grass,
+	Respond(c, http.StatusOK, showcaseProfileResponse{
+		UserID:              u.ID,
+		DisplayName:         u.DisplayName,
+		Level:               u.Level,
+		RatingGrade:         ratingGrade(u.Level),
+		EquippedTitle:       equipped,
+		DisplayedTitles:     displayed,
+		PersonaShowcaseText: u.PersonaShowcaseText,
+		PersonaLLMOutput:    u.PersonaLLMOutput,
+		Grass:               grass,
 	})
 }
 

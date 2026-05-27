@@ -16,7 +16,11 @@ type TitlesHandler struct {
 func NewTitlesHandler(t *repo.TitleRepo) *TitlesHandler { return &TitlesHandler{Titles: t} }
 
 func (h *TitlesHandler) ListMine(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	rows, err := h.Titles.ListUserTitles(c.Request.Context(), uid)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
@@ -31,15 +35,18 @@ type equipReq struct {
 }
 
 func (h *TitlesHandler) Equip(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "invalid id")
 		return
 	}
-	var req equipReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+	req, ok := BindAndValidate[equipReq](c, nil)
+	if !ok {
 		return
 	}
 	if req.IsEquipped != nil {

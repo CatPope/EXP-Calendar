@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/expcalendar/backend/internal/middleware"
+	"github.com/expcalendar/backend/internal/models"
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -34,11 +36,24 @@ type purchaseReq struct {
 	ItemID string `json:"item_id"`
 }
 
+type purchaseResponse struct {
+	Purchase        *models.Purchase `json:"purchase"`
+	RemainingPoints int              `json:"remaining_points"`
+}
+
 func (h *ShopHandler) Purchase(c *gin.Context) {
-	uid := middleware.MustUserID(c)
-	var req purchaseReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *purchaseReq) error {
+		if r.ItemID == "" {
+			return errors.New("item_id required")
+		}
+		return nil
+	})
+	if !ok {
 		return
 	}
 	itemID, err := uuid.Parse(req.ItemID)
@@ -83,8 +98,8 @@ func (h *ShopHandler) Purchase(c *gin.Context) {
 		return
 	}
 
-	Respond(c, http.StatusOK, gin.H{
-		"purchase":         purchase,
-		"remaining_points": remaining,
+	Respond(c, http.StatusOK, purchaseResponse{
+		Purchase:        purchase,
+		RemainingPoints: remaining,
 	})
 }

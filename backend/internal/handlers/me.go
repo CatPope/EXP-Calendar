@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/expcalendar/backend/internal/game"
@@ -19,8 +20,32 @@ func NewMeHandler(u *repo.UserRepo, t *repo.TitleRepo) *MeHandler {
 	return &MeHandler{Users: u, Titles: t}
 }
 
+// meResponse mirrors the legacy gin.H payload one-for-one; declared as a
+// named anon-style struct so callers can rely on field order/keys.
+type meResponse struct {
+	ID                   any    `json:"id"`
+	Email                string `json:"email"`
+	DisplayName          string `json:"display_name"`
+	Level                int    `json:"level"`
+	TotalExp             int    `json:"total_exp"`
+	ExpToNextLevel       int    `json:"exp_to_next_level"`
+	CurrentPoints        int    `json:"current_points"`
+	DailyPointsEarned    int    `json:"daily_points_earned"`
+	DailyPointsCap       int    `json:"daily_points_cap"`
+	AccountStatus        string `json:"account_status"`
+	PersonaCharacterType string `json:"persona_character_type"`
+	PersonaDefinition    string `json:"persona_definition"`
+	PersonaTokens        int    `json:"persona_tokens"`
+	EquippedTitle        any    `json:"equipped_title"`
+	Tendency             string `json:"tendency"`
+}
+
 func (h *MeHandler) Get(c *gin.Context) {
-	uid := middleware.MustUserID(c)
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
 	u, err := h.Users.GetByID(c.Request.Context(), uid)
 	if err != nil {
 		RespondErr(c, http.StatusNotFound, "NOT_FOUND", "user not found")
@@ -38,22 +63,22 @@ func (h *MeHandler) Get(c *gin.Context) {
 			NegativeModifier: equipped.NegativeModifier,
 		}
 	}
-	Respond(c, http.StatusOK, gin.H{
-		"id":                     u.ID,
-		"email":                  u.Email,
-		"display_name":           u.DisplayName,
-		"level":                  u.Level,
-		"total_exp":              u.TotalExp,
-		"exp_to_next_level":      game.ExpToNextLevel(u.Level, u.TotalExp),
-		"current_points":         u.CurrentPoints,
-		"daily_points_earned":    u.DailyPointsEarned,
-		"daily_points_cap":       game.DailyPointsCap(),
-		"account_status":         u.AccountStatus,
-		"persona_character_type": u.PersonaCharacterType,
-		"persona_definition":     u.PersonaDefinition,
-		"persona_tokens":         u.PersonaTokens,
-		"equipped_title":         equippedJSON,
-		"tendency":               u.Tendency,
+	Respond(c, http.StatusOK, meResponse{
+		ID:                   u.ID,
+		Email:                u.Email,
+		DisplayName:          u.DisplayName,
+		Level:                u.Level,
+		TotalExp:             u.TotalExp,
+		ExpToNextLevel:       game.ExpToNextLevel(u.Level, u.TotalExp),
+		CurrentPoints:        u.CurrentPoints,
+		DailyPointsEarned:    u.DailyPointsEarned,
+		DailyPointsCap:       game.DailyPointsCap(),
+		AccountStatus:        u.AccountStatus,
+		PersonaCharacterType: u.PersonaCharacterType,
+		PersonaDefinition:    u.PersonaDefinition,
+		PersonaTokens:        u.PersonaTokens,
+		EquippedTitle:        equippedJSON,
+		Tendency:             u.Tendency,
 	})
 }
 
@@ -61,22 +86,32 @@ type onboardingReq struct {
 	Tendency string `json:"tendency"`
 }
 
+type okResponse struct {
+	OK bool `json:"ok"`
+}
+
 func (h *MeHandler) Onboarding(c *gin.Context) {
-	uid := middleware.MustUserID(c)
-	var req onboardingReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "tendency required")
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
 		return
 	}
-	switch req.Tendency {
-	case "EASY", "NORMAL", "HARD":
-	default:
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "tendency must be EASY|NORMAL|HARD")
+	req, ok := BindAndValidate(c, func(r *onboardingReq) error {
+		switch r.Tendency {
+		case "EASY", "NORMAL", "HARD":
+			return nil
+		case "":
+			return errors.New("tendency required")
+		default:
+			return errors.New("tendency must be EASY|NORMAL|HARD")
+		}
+	})
+	if !ok {
 		return
 	}
 	if err := h.Users.SetTendency(c.Request.Context(), uid, req.Tendency); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, gin.H{"ok": true})
+	Respond(c, http.StatusOK, okResponse{OK: true})
 }

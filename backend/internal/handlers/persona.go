@@ -26,11 +26,25 @@ type generateReq struct {
 	Definition    string `json:"definition"`     // preview override (not persisted)
 }
 
+type generateResponse struct {
+	LLMOutput      string `json:"llm_output"`
+	CharacterType  string `json:"character_type"`
+	UsedDefinition bool   `json:"used_definition"`
+}
+
 func (h *PersonaHandler) Generate(c *gin.Context) {
-	uid := middleware.MustUserID(c)
-	var req generateReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Text == "" {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "text required")
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *generateReq) error {
+		if r.Text == "" {
+			return errors.New("text required")
+		}
+		return nil
+	})
+	if !ok {
 		return
 	}
 	u, err := h.Users.GetByID(c.Request.Context(), uid)
@@ -64,10 +78,10 @@ func (h *PersonaHandler) Generate(c *gin.Context) {
 		RespondErr(c, http.StatusBadGateway, "LLM_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, gin.H{
-		"llm_output":     out,
-		"character_type": ct,
-		"used_definition": def != "",
+	Respond(c, http.StatusOK, generateResponse{
+		LLMOutput:      out,
+		CharacterType:  ct,
+		UsedDefinition: def != "",
 	})
 }
 
@@ -75,11 +89,25 @@ type showcaseReq struct {
 	Text string `json:"text"`
 }
 
+type showcaseResponse struct {
+	ShowcaseText   string `json:"showcase_text"`
+	LLMOutput      string `json:"llm_output"`
+	UsedDefinition bool   `json:"used_definition"`
+}
+
 func (h *PersonaHandler) Showcase(c *gin.Context) {
-	uid := middleware.MustUserID(c)
-	var req showcaseReq
-	if err := c.ShouldBindJSON(&req); err != nil || req.Text == "" {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "text required")
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *showcaseReq) error {
+		if r.Text == "" {
+			return errors.New("text required")
+		}
+		return nil
+	})
+	if !ok {
 		return
 	}
 	u, err := h.Users.GetByID(c.Request.Context(), uid)
@@ -113,10 +141,10 @@ func (h *PersonaHandler) Showcase(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, gin.H{
-		"showcase_text":   req.Text,
-		"llm_output":      out,
-		"used_definition": def != "",
+	Respond(c, http.StatusOK, showcaseResponse{
+		ShowcaseText:   req.Text,
+		LLMOutput:      out,
+		UsedDefinition: def != "",
 	})
 }
 
@@ -124,13 +152,21 @@ type defineReq struct {
 	Definition string `json:"definition"`
 }
 
+type defineResponse struct {
+	PersonaDefinition string `json:"persona_definition"`
+	PersonaTokens     int    `json:"persona_tokens"`
+}
+
 // Define consumes 1 캐릭터 설정권 (persona_tokens >= 1 required) and writes
 // the user-authored persona definition. Returns remaining tokens.
 func (h *PersonaHandler) Define(c *gin.Context) {
-	uid := middleware.MustUserID(c)
-	var req defineReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate[defineReq](c, nil)
+	if !ok {
 		return
 	}
 	def := llm.SanitizeDefinition(req.Definition)
@@ -148,8 +184,8 @@ func (h *PersonaHandler) Define(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, gin.H{
-		"persona_definition": def,
-		"persona_tokens":     remaining,
+	Respond(c, http.StatusOK, defineResponse{
+		PersonaDefinition: def,
+		PersonaTokens:     remaining,
 	})
 }

@@ -39,6 +39,15 @@ func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, err
 	return scanUser(row)
 }
 
+// GetByIDTx is GetByID inside a caller-owned transaction. Returned record
+// includes the full column set defined by userSelect (kept in sync with
+// scanUser); this is the only difference from the legacy mini-reader that
+// previously lived inside handlers/schedules.go.
+func (r *UserRepo) GetByIDTx(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*models.User, error) {
+	row := tx.QueryRow(ctx, userSelect+` WHERE id=$1`, id)
+	return scanUser(row)
+}
+
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*models.User, error) {
 	row := r.Pool.QueryRow(ctx, userSelect+` WHERE email=$1`, email)
 	return scanUser(row)
