@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Calendar, ShoppingBag, Users, Sparkles, LogOut } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { Api } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
 
@@ -21,7 +21,7 @@ export default function NavBar() {
 
   async function handleLogout() {
     try {
-      await apiFetch("/api/auth/logout", { method: "POST" });
+      await Api.logout();
     } catch {}
     clearTokens();
     setUser(null);

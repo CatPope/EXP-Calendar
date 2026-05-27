@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import MonthGrid from "@/components/calendar/MonthGrid";
 import WeekGrid from "@/components/calendar/WeekGrid";
@@ -11,6 +11,7 @@ import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import {
   addDays,
   addMonths,
@@ -28,9 +29,8 @@ type View = "month" | "week" | "day";
 export default function CalendarPage() {
   const [view, setView] = useState<View>("month");
   const [cursor, setCursor] = useState<Date>(new Date());
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  // Local overlay for optimistic mutations on top of the fetched list.
+  const [overrides, setOverrides] = useState<Schedule[] | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [prefillYmd, setPrefillYmd] = useState<string | undefined>();
@@ -52,22 +52,26 @@ export default function CalendarPage() {
     return { from: toYMD(cursor), to: toYMD(cursor) };
   }, [view, cursor]);
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setErr(null);
-    try {
-      const data = await Api.listSchedules(range.from, range.to);
-      setSchedules(data);
-    } catch (e) {
-      setErr(humanizeError(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [range.from, range.to]);
+  const {
+    data,
+    loading,
+    error: err,
+    reload,
+    dismissError
+  } = useAsyncData<Schedule[]>(
+    () => Api.listSchedules(range.from, range.to),
+    [range.from, range.to]
+  );
 
+  // Reset optimistic overlay whenever the underlying query changes.
   useEffect(() => {
-    reload();
-  }, [reload]);
+    setOverrides(null);
+  }, [data]);
+
+  const schedules = overrides ?? data ?? [];
+  function patchLocal(updater: (arr: Schedule[]) => Schedule[]) {
+    setOverrides((cur) => updater(cur ?? data ?? []));
+  }
 
   function shift(n: number) {
     if (view === "month") setCursor(addMonths(cursor, n));
@@ -94,7 +98,7 @@ export default function CalendarPage() {
   const onCompleteSchedule = async (s: Schedule) => {
     try {
       const { schedule: updated, reward } = await Api.completeSchedule(s.id);
-      setSchedules((arr) => arr.map((x) => (x.id === updated.id ? updated : x)));
+      patchLocal((arr) => arr.map((x) => (x.id === updated.id ? updated : x)));
       showReward(reward);
       // Refresh user from server to keep HUD consistent.
       try {
@@ -114,7 +118,7 @@ export default function CalendarPage() {
     if (toYMD(new Date(s.due_date)) === ymd) return;
     try {
       const updated = await Api.patchSchedule(id, { due_date: ymdToDueIso(ymd) });
-      setSchedules((arr) => arr.map((x) => (x.id === id ? updated : x)));
+      patchLocal((arr) => arr.map((x) => (x.id === id ? updated : x)));
       pushToast("success", "일정 날짜를 변경했습니다.");
     } catch (e) {
       pushToast("error", humanizeError(e));
@@ -189,7 +193,7 @@ export default function CalendarPage() {
         </Button>
       </div>
 
-      {err && <ErrorBanner message={err} onDismiss={() => setErr(null)} />}
+      {err && <ErrorBanner message={err} onDismiss={dismissError} />}
 
       {loading ? (
         <Spinner block label="일정 불러오는 중..." />

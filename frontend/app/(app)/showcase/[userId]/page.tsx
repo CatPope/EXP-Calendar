@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
-import { apiFetch, humanizeError } from "@/lib/api";
+import { Api } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import type { ShowcaseDetail, User } from "@/lib/types";
+import { useAsyncData } from "@/lib/hooks/useAsyncData";
+import type { ShowcaseDetail } from "@/lib/types";
 import TitleBadge from "@/components/TitleBadge";
 import GrassGraph from "@/components/GrassGraph";
 import CharacterAvatar from "@/components/CharacterAvatar";
@@ -14,33 +15,37 @@ import Loading from "@/components/Loading";
 export default function ShowcaseDetailPage() {
   const params = useParams<{ userId: string }>();
   const setUser = useAppStore((s) => s.setUser);
-  const [detail, setDetail] = useState<ShowcaseDetail | null>(null);
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(true);
 
+  const { data: detail, loading, error, dismissError } = useAsyncData<ShowcaseDetail>(
+    () => Api.showcaseDetail(params.userId),
+    [params.userId]
+  );
+
+  // Fire-and-forget quest completion + /me refresh after a successful load.
   useEffect(() => {
+    if (!detail) return;
+    let cancelled = false;
     (async () => {
       try {
-        const data = await apiFetch<ShowcaseDetail>(`/api/showcase/${params.userId}`);
-        setDetail(data);
-        try {
-          await apiFetch("/api/quests/VISIT_SHOWCASE/complete", { method: "POST" });
-        } catch {}
-        try {
-          const me = await apiFetch<User>("/api/me");
-          setUser(me);
-        } catch {}
-      } catch (e) {
-        setErr(humanizeError(e));
-      } finally {
-        setLoading(false);
+        await Api.completeQuest("VISIT_SHOWCASE");
+      } catch {
+        /* non-fatal */
+      }
+      try {
+        const me = await Api.me();
+        if (!cancelled) setUser(me);
+      } catch {
+        /* non-fatal */
       }
     })();
-  }, [params.userId, setUser]);
+    return () => {
+      cancelled = true;
+    };
+  }, [detail, setUser]);
 
   return (
     <div className="space-y-4">
-      {err && <ErrorBanner message={err} onDismiss={() => setErr("")} />}
+      {error && <ErrorBanner message={error} onDismiss={dismissError} />}
       {loading ? (
         <Loading />
       ) : !detail ? (

@@ -7,6 +7,12 @@ interface Props {
   days?: number;
 }
 
+interface Cell {
+  ymd: string;
+  count: number;
+  inRange: boolean;
+}
+
 const LEVELS = [
   "bg-surface-2",
   "bg-success/30",
@@ -31,7 +37,7 @@ export default function GrassGraph({ data, days = 365 }: Props) {
   const startSun = addDays(start, -start.getDay());
   const totalCells = 53 * 7;
 
-  const cells: { ymd: string; count: number; inRange: boolean }[] = [];
+  const cells: Cell[] = [];
   for (let i = 0; i < totalCells; i++) {
     const d = addDays(startSun, i);
     const ymd = toYMD(d);
@@ -41,7 +47,7 @@ export default function GrassGraph({ data, days = 365 }: Props) {
   }
 
   // Render as columns (weeks)
-  const weeks: typeof cells[] = [];
+  const weeks: Cell[][] = [];
   for (let w = 0; w < 53; w++) weeks.push(cells.slice(w * 7, w * 7 + 7));
 
   return (

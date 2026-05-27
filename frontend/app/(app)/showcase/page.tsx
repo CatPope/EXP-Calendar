@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { apiFetch, humanizeError } from "@/lib/api";
+import { Api } from "@/lib/api";
+import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type { ShowcaseSummary } from "@/lib/types";
 import TitleBadge from "@/components/TitleBadge";
 import CharacterAvatar from "@/components/CharacterAvatar";
@@ -11,27 +11,16 @@ import Loading from "@/components/Loading";
 import { ChevronRight } from "lucide-react";
 
 export default function ShowcaseListPage() {
-  const [list, setList] = useState<ShowcaseSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await apiFetch<ShowcaseSummary[]>("/api/showcase");
-        setList(data);
-      } catch (e) {
-        setErr(humanizeError(e));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const { data, loading, error, dismissError } = useAsyncData<ShowcaseSummary[]>(
+    () => Api.listShowcase(),
+    []
+  );
+  const list = data ?? [];
 
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">다른 사용자 쇼케이스</h1>
-      {err && <ErrorBanner message={err} onDismiss={() => setErr("")} />}
+      {error && <ErrorBanner message={error} onDismiss={dismissError} />}
       {loading ? (
         <Loading />
       ) : list.length === 0 ? (

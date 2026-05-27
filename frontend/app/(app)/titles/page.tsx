@@ -1,38 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Crown, Eye, EyeOff, Star } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import TitleBadge from "@/components/TitleBadge";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type { UserTitle } from "@/lib/types";
 
 export default function TitlesPage() {
-  const [titles, setTitles] = useState<UserTitle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const pushToast = useAppStore((s) => s.pushToast);
   const setUser = useAppStore((s) => s.setUser);
 
-  async function reload() {
-    setLoading(true);
-    try {
-      const data = await Api.myTitles();
-      setTitles(data);
-    } catch (e) {
-      setErr(humanizeError(e));
-    } finally {
-      setLoading(false);
-    }
-  }
+  const { data, loading, error, dismissError } = useAsyncData<UserTitle[]>(
+    () => Api.myTitles(),
+    []
+  );
+  // Local optimistic mirror so toggles don't trigger a re-fetch / loading flash.
+  const [overrides, setOverrides] = useState<UserTitle[] | null>(null);
+  const titles = overrides ?? data ?? [];
 
-  useEffect(() => {
-    reload();
-  }, []);
+  function applyLocal(updater: (arr: UserTitle[]) => UserTitle[]) {
+    setOverrides((cur) => updater(cur ?? data ?? []));
+  }
 
   async function toggleEquip(t: UserTitle) {
     setBusyId(t.id);
@@ -40,8 +34,7 @@ export default function TitlesPage() {
       // 명세: 장착(equipped)은 1개만. true로 보내면 기존 장착은 서버가 해제.
       await Api.patchTitle(t.id, { is_equipped: !t.is_equipped });
       pushToast("success", t.is_equipped ? "칭호를 해제했습니다." : "칭호를 장착했습니다.");
-      // sync local
-      setTitles((arr) =>
+      applyLocal((arr) =>
         arr.map((x) => ({
           ...x,
           is_equipped: x.id === t.id ? !t.is_equipped : false
@@ -64,7 +57,7 @@ export default function TitlesPage() {
     setBusyId(t.id);
     try {
       await Api.patchTitle(t.id, { is_displayed: !t.is_displayed });
-      setTitles((arr) =>
+      applyLocal((arr) =>
         arr.map((x) =>
           x.id === t.id ? { ...x, is_displayed: !t.is_displayed } : x
         )
@@ -87,7 +80,7 @@ export default function TitlesPage() {
         </span>
       </div>
 
-      {err && <ErrorBanner message={err} onDismiss={() => setErr(null)} />}
+      {error && <ErrorBanner message={error} onDismiss={dismissError} />}
       {loading ? (
         <Spinner block label="칭호 불러오는 중..." />
       ) : titles.length === 0 ? (

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, humanizeError } from "@/lib/api";
+import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
-import type { Tendency, User } from "@/lib/types";
+import type { Tendency } from "@/lib/types";
 import ErrorBanner from "@/components/ErrorBanner";
 
 const OPTIONS: { value: Tendency; label: string; desc: string }[] = [
@@ -24,11 +24,8 @@ export default function OnboardingPage() {
     setBusy(true);
     setErr("");
     try {
-      await apiFetch("/api/me/onboarding", {
-        method: "POST",
-        body: JSON.stringify({ tendency: pick })
-      });
-      const me = await apiFetch<User>("/api/me");
+      await Api.onboarding(pick);
+      const me = await Api.me();
       setUser(me);
       router.replace("/calendar");
     } catch (e) {

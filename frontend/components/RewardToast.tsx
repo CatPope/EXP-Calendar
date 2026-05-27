@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { Sparkles, TrendingUp, Trophy } from "lucide-react";
 import type { RewardResult } from "@/lib/types";
+import {
+  REWARD_TOAST_HIDE_DELAY_MS,
+  REWARD_TOAST_VISIBLE_MS
+} from "@/lib/ui-constants";
 import TitleBadge from "./TitleBadge";
 
 interface Props {
@@ -18,8 +22,8 @@ export default function RewardToast({ reward, onClose }: Props) {
       setOpen(true);
       const t = setTimeout(() => {
         setOpen(false);
-        setTimeout(onClose, 200);
-      }, 3500);
+        setTimeout(onClose, REWARD_TOAST_HIDE_DELAY_MS);
+      }, REWARD_TOAST_VISIBLE_MS);
       return () => clearTimeout(t);
     }
   }, [reward, onClose]);

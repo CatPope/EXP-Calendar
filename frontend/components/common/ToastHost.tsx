@@ -2,22 +2,22 @@
 
 import { useEffect } from "react";
 import { useAppStore } from "@/lib/store";
+import { TOAST_DURATION_MS } from "@/lib/ui-constants";
 import RewardToast from "../RewardToast";
 import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
 
-function ToastItem({
-  id,
-  kind,
-  message,
-  onClose
-}: {
+type ToastKind = "info" | "success" | "error";
+
+interface ToastItemProps {
   id: string;
-  kind: "info" | "success" | "error";
+  kind: ToastKind;
   message: string;
   onClose: (id: string) => void;
-}) {
+}
+
+function ToastItem({ id, kind, message, onClose }: ToastItemProps) {
   useEffect(() => {
-    const t = setTimeout(() => onClose(id), 4000);
+    const t = setTimeout(() => onClose(id), TOAST_DURATION_MS);
     return () => clearTimeout(t);
   }, [id, onClose]);
 
