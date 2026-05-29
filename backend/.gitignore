@@ -1,0 +1,22 @@
+# Build artifacts
+bin/
+tmp/
+/server
+/server.exe
+*.exe
+*.test
+*.out
+
+# Env / secrets
+*.env
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/
+.vs/

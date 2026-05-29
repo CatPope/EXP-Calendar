@@ -1,0 +1,28 @@
+# VCS / IDE
+.git
+.gitignore
+.idea
+.vscode
+.vs
+
+# Dependencies & build artifacts
+node_modules
+.next
+out
+coverage
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Env (이미지에 포함하지 않음)
+.env
+.env.local
+.env.*.local
+
+# Docs
+*.md

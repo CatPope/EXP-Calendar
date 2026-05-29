@@ -1,0 +1,145 @@
+package repo
+
+import (
+	"context"
+
+	"github.com/expcalendar/backend/internal/models"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type TitleRepo struct{ Pool *pgxpool.Pool }
+
+func NewTitleRepo(p *pgxpool.Pool) *TitleRepo { return &TitleRepo{Pool: p} }
+
+func (r *TitleRepo) GetByName(ctx context.Context, name string) (*models.Title, error) {
+	row := r.Pool.QueryRow(ctx, `SELECT id, name, grade, color_hex, icon_url, description, condition FROM titles WHERE name=$1`, name)
+	var t models.Title
+	if err := row.Scan(&t.ID, &t.Name, &t.Grade, &t.ColorHex, &t.IconURL, &t.Description, &t.Condition); err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// GrantTitleTx inserts user_titles row, ON CONFLICT DO NOTHING. Returns true if newly granted.
+func (r *TitleRepo) GrantTitleTx(ctx context.Context, tx pgx.Tx, userID, titleID uuid.UUID) (bool, error) {
+	tag, err := tx.Exec(ctx,
+		`INSERT INTO user_titles(user_id, title_id) VALUES($1,$2) ON CONFLICT (user_id, title_id) DO NOTHING`,
+		userID, titleID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+func (r *TitleRepo) GrantTitleByName(ctx context.Context, tx pgx.Tx, userID uuid.UUID, name string) (*models.Title, bool, error) {
+	t, err := r.getByNameTx(ctx, tx, name)
+	if err != nil {
+		return nil, false, err
+	}
+	granted, err := r.GrantTitleTx(ctx, tx, userID, t.ID)
+	if err != nil {
+		return nil, false, err
+	}
+	return t, granted, nil
+}
+
+func (r *TitleRepo) getByNameTx(ctx context.Context, tx pgx.Tx, name string) (*models.Title, error) {
+	row := tx.QueryRow(ctx, `SELECT id, name, grade, color_hex, icon_url, description, condition FROM titles WHERE name=$1`, name)
+	var t models.Title
+	if err := row.Scan(&t.ID, &t.Name, &t.Grade, &t.ColorHex, &t.IconURL, &t.Description, &t.Condition); err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// ListUserTitles returns the user's titles joined with the master.
+func (r *TitleRepo) ListUserTitles(ctx context.Context, userID uuid.UUID) ([]*models.UserTitle, error) {
+	rows, err := r.Pool.Query(ctx,
+		`SELECT ut.id, ut.is_equipped, ut.is_displayed, ut.negative_modifier, ut.acquired_at,
+		        t.id, t.name, t.grade, t.color_hex, t.icon_url
+		 FROM user_titles ut
+		 JOIN titles t ON t.id = ut.title_id
+		 WHERE ut.user_id=$1
+		 ORDER BY ut.acquired_at DESC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*models.UserTitle
+	for rows.Next() {
+		ut := &models.UserTitle{}
+		if err := rows.Scan(&ut.ID, &ut.IsEquipped, &ut.IsDisplayed, &ut.NegativeModifier, &ut.AcquiredAt,
+			&ut.Title.ID, &ut.Title.Name, &ut.Title.Grade, &ut.Title.ColorHex, &ut.Title.IconURL); err != nil {
+			return nil, err
+		}
+		out = append(out, ut)
+	}
+	return out, rows.Err()
+}
+
+// EquippedFor returns the currently equipped title for a user, or (nil,nil) if none.
+func (r *TitleRepo) EquippedFor(ctx context.Context, userID uuid.UUID) (*models.UserTitle, error) {
+	row := r.Pool.QueryRow(ctx,
+		`SELECT ut.id, ut.is_equipped, ut.is_displayed, ut.negative_modifier, ut.acquired_at,
+		        t.id, t.name, t.grade, t.color_hex, t.icon_url
+		 FROM user_titles ut
+		 JOIN titles t ON t.id = ut.title_id
+		 WHERE ut.user_id=$1 AND ut.is_equipped=true LIMIT 1`, userID)
+	ut := &models.UserTitle{}
+	err := row.Scan(&ut.ID, &ut.IsEquipped, &ut.IsDisplayed, &ut.NegativeModifier, &ut.AcquiredAt,
+		&ut.Title.ID, &ut.Title.Name, &ut.Title.Grade, &ut.Title.ColorHex, &ut.Title.IconURL)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return ut, nil
+}
+
+// SetEquipped sets is_equipped exclusively (other titles for the user are unequipped).
+func (r *TitleRepo) SetEquipped(ctx context.Context, userID, userTitleID uuid.UUID, equip bool) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if equip {
+		if _, err := tx.Exec(ctx, `UPDATE user_titles SET is_equipped=false WHERE user_id=$1`, userID); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE user_titles SET is_equipped=$1 WHERE id=$2 AND user_id=$3`, equip, userTitleID, userID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *TitleRepo) SetDisplayed(ctx context.Context, userID, userTitleID uuid.UUID, displayed bool) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE user_titles SET is_displayed=$1 WHERE id=$2 AND user_id=$3`, displayed, userTitleID, userID)
+	return err
+}
+
+// DisplayedTitlesForUser returns titles flagged is_displayed for public showcase.
+func (r *TitleRepo) DisplayedTitlesForUser(ctx context.Context, userID uuid.UUID) ([]*models.Title, error) {
+	rows, err := r.Pool.Query(ctx,
+		`SELECT t.id, t.name, t.grade, t.color_hex, t.icon_url
+		 FROM user_titles ut JOIN titles t ON t.id = ut.title_id
+		 WHERE ut.user_id=$1 AND ut.is_displayed=true
+		 ORDER BY ut.acquired_at DESC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*models.Title
+	for rows.Next() {
+		t := &models.Title{}
+		if err := rows.Scan(&t.ID, &t.Name, &t.Grade, &t.ColorHex, &t.IconURL); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}

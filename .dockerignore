@@ -1,0 +1,39 @@
+# VCS
+.git
+.gitignore
+
+# IDE / OS
+.vs
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Node / Next.js
+node_modules
+**/node_modules
+**/.next
+**/out
+
+# Build outputs
+**/dist
+**/build
+backend/bin
+backend/tmp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Secrets / local env
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Docs (이미지 등 큰 자산을 컨텍스트로 보낼 필요 없음)
+docs
+
+# OMC / Claude meta
+.omc
+**/.omc
