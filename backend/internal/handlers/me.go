@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/expcalendar/backend/internal/game"
 	"github.com/expcalendar/backend/internal/middleware"
@@ -82,6 +83,38 @@ func (h *MeHandler) Get(c *gin.Context) {
 		EquippedTitle:        equippedJSON,
 		Tendency:             u.Tendency,
 	})
+}
+
+type profileReq struct {
+	DisplayName string `json:"display_name"`
+}
+
+// SetProfile updates editable profile fields (currently display name).
+func (h *MeHandler) SetProfile(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *profileReq) error {
+		name := strings.TrimSpace(r.DisplayName)
+		if name == "" {
+			return errors.New("display_name required")
+		}
+		if len([]rune(name)) > 30 {
+			return errors.New("display_name too long")
+		}
+		r.DisplayName = name
+		return nil
+	})
+	if !ok {
+		return
+	}
+	if err := h.Users.SetDisplayName(c.Request.Context(), uid, req.DisplayName); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	Respond(c, http.StatusOK, okResponse{OK: true})
 }
 
 type characterReq struct {

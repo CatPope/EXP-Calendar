@@ -89,6 +89,12 @@ func (r *UserRepo) SetTendency(ctx context.Context, id uuid.UUID, tendency strin
 	return err
 }
 
+// SetDisplayName updates the user's display name.
+func (r *UserRepo) SetDisplayName(ctx context.Context, id uuid.UUID, name string) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE users SET display_name=$1, updated_at=now() WHERE id=$2`, name, id)
+	return err
+}
+
 func (r *UserRepo) SetPersonaCharacterType(ctx context.Context, id uuid.UUID, characterType string) error {
 	_, err := r.Pool.Exec(ctx, `UPDATE users SET persona_character_type=$1, updated_at=now() WHERE id=$2`, characterType, id)
 	return err

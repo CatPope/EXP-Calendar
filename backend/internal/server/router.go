@@ -91,6 +91,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.GET("/me", meH.Get)
 		authed.POST("/me/onboarding", meH.Onboarding)
 		authed.PATCH("/me/character", meH.SetCharacter)
+		authed.PATCH("/me/profile", meH.SetProfile)
 
 		// schedules
 		authed.GET("/schedules", schedH.List)

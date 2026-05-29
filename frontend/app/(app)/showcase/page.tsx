@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { Api } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type { ShowcaseSummary } from "@/lib/types";
 import TitleBadge from "@/components/TitleBadge";
 import CharacterAvatar from "@/components/CharacterAvatar";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, User as UserIcon } from "lucide-react";
 import type { SkinId } from "@/lib/character";
 
 export default function ShowcaseListPage() {
+  const user = useAppStore((s) => s.user);
   const { data, loading, error, dismissError } = useAsyncData<ShowcaseSummary[]>(
     () => Api.listShowcase(),
     []
@@ -20,7 +22,17 @@ export default function ShowcaseListPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold">다른 사용자 쇼케이스</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl font-bold">다른 사용자 쇼케이스</h1>
+        {user && (
+          <Link
+            href={`/showcase/${user.id}`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent/15 text-accent border border-accent/40 px-3 py-1.5 text-sm hover:bg-accent/25 transition-colors"
+          >
+            <UserIcon className="h-4 w-4" />내 쇼케이스
+          </Link>
+        )}
+      </div>
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
       {loading ? (
         <Loading />

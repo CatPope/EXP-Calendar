@@ -187,6 +187,11 @@ export const Api = {
       method: "PATCH",
       body: JSON.stringify({ skin })
     }),
+  updateProfile: (display_name: string) =>
+    apiFetch<{ ok: true }>("/api/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ display_name })
+    }),
 
   // schedules
   listSchedules: (from: string, to: string) =>
