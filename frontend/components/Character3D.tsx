@@ -37,16 +37,34 @@ function tierKeyFromLevel(level: number): keyof typeof SKIN_BY_TIER {
 
 const MODEL_URL = "/characters/Model/characterMedium.fbx";
 const IDLE_URL = "/characters/Animations/idle.fbx";
+const JUMP_URL = "/characters/Animations/jump.fbx";
 
-function CharacterModel({ tier, playing }: { tier: Tier; playing: boolean }) {
+function CharacterModel({ tier, jumping }: { tier: Tier; jumping: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
   const baseModel = useFBX(MODEL_URL);
   const idleFbx = useFBX(IDLE_URL);
+  const jumpFbx = useFBX(JUMP_URL);
   const texture = useTexture(tier.skin);
 
   // Each instance needs its own skinned mesh tree so the animation mixer
   // doesn't fight with siblings.
   const model = useMemo(() => cloneSkeleton(baseModel), [baseModel]);
+
+  // Name the clips so useAnimations exposes actions.idle / actions.jump.
+  const clips = useMemo(() => {
+    const out: THREE.AnimationClip[] = [];
+    const idle = idleFbx.animations[0];
+    const jump = jumpFbx.animations[0];
+    if (idle) {
+      idle.name = "idle";
+      out.push(idle);
+    }
+    if (jump) {
+      jump.name = "jump";
+      out.push(jump);
+    }
+    return out;
+  }, [idleFbx, jumpFbx]);
 
   useEffect(() => {
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -75,19 +93,32 @@ function CharacterModel({ tier, playing }: { tier: Tier; playing: boolean }) {
     });
   }, [model, texture]);
 
-  const { actions, mixer } = useAnimations(idleFbx.animations, groupRef);
+  const { actions, mixer } = useAnimations(clips, groupRef);
+
+  // Idle loops continuously as the base state.
   useEffect(() => {
-    const first = Object.values(actions)[0];
-    if (!first) return;
-    first.reset();
-    first.play();
-    if (!playing) first.paused = true;
-    else first.paused = false;
+    actions.idle?.reset().fadeIn(0.2).play();
     return () => {
-      first.stop();
       mixer.stopAllAction();
     };
-  }, [actions, mixer, playing]);
+  }, [actions, mixer]);
+
+  // On hover (detail view) play jump once, then settle back into idle.
+  useEffect(() => {
+    const jump = actions.jump;
+    const idle = actions.idle;
+    if (!jump || !idle) return;
+    if (jumping) {
+      jump.reset();
+      jump.setLoop(THREE.LoopOnce, 1);
+      jump.clampWhenFinished = false;
+      idle.fadeOut(0.15);
+      jump.fadeIn(0.15).play();
+    } else {
+      jump.fadeOut(0.2);
+      idle.reset().fadeIn(0.2).play();
+    }
+  }, [jumping, actions]);
 
   return (
     <Center top>
@@ -95,16 +126,6 @@ function CharacterModel({ tier, playing }: { tier: Tier; playing: boolean }) {
         <primitive object={model} />
       </group>
     </Center>
-  );
-}
-
-function Fallback({ size }: { size: number }) {
-  return (
-    <div
-      className="rounded-md bg-surface-2 animate-pulse"
-      style={{ width: size, height: size }}
-      aria-hidden
-    />
   );
 }
 
@@ -127,7 +148,7 @@ export default function Character3D({ level, size = 64, className = "", withFram
         <directionalLight position={[2, 3, 2]} intensity={1.1} />
         <directionalLight position={[-2, 1, -2]} intensity={0.4} color={tier.rim ?? "#ffffff"} />
         <Suspense fallback={null}>
-          <CharacterModel tier={tier} playing={withFrame ? hover : true} />
+          <CharacterModel tier={tier} jumping={hover} />
         </Suspense>
       </Canvas>
     </div>
@@ -154,3 +175,4 @@ export default function Character3D({ level, size = 64, className = "", withFram
 
 useFBX.preload(MODEL_URL);
 useFBX.preload(IDLE_URL);
+useFBX.preload(JUMP_URL);
