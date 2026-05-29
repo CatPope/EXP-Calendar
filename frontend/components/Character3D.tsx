@@ -5,46 +5,29 @@ import { Canvas } from "@react-three/fiber";
 import { useFBX, useTexture, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { skinById, skinFromLevel, type SkinDef, type SkinId } from "@/lib/character";
 
 interface Props {
   level: number;
   size?: number;
   className?: string;
   withFrame?: boolean;
-}
-
-interface Tier {
-  skin: string;
-  rim: string | null;
-  label: string;
-}
-
-const SKIN_BY_TIER: Record<string, Tier> = {
-  Common:     { skin: "/characters/Skins/skaterMaleA.png",   rim: null,      label: "Common" },
-  CommonPlus: { skin: "/characters/Skins/skaterFemaleA.png", rim: "#06D6A0", label: "Common+" },
-  Rare:       { skin: "/characters/Skins/criminalMaleA.png", rim: "#8B5CF6", label: "Rare" },
-  Epic:       { skin: "/characters/Skins/cyborgFemaleA.png", rim: "#FFD700", label: "Epic" },
-  Legendary:  { skin: "/characters/Skins/cyborgFemaleA.png", rim: "#FF6B6B", label: "Legendary" },
-};
-
-function tierKeyFromLevel(level: number): keyof typeof SKIN_BY_TIER {
-  if (level >= 50) return "Legendary";
-  if (level >= 20) return "Epic";
-  if (level >= 10) return "Rare";
-  if (level >= 5)  return "CommonPlus";
-  return "Common";
+  /** 명시 스킨. 없으면 level 기반 기본 스킨. */
+  skin?: SkinId;
+  /** idle/jump 애니메이션 재생 여부. 리스트 썸네일은 false로 정적 렌더. */
+  animated?: boolean;
 }
 
 const MODEL_URL = "/characters/Model/characterMedium.fbx";
 const IDLE_URL = "/characters/Animations/idle.fbx";
 const JUMP_URL = "/characters/Animations/jump.fbx";
 
-function CharacterModel({ tier, jumping }: { tier: Tier; jumping: boolean }) {
+function CharacterModel({ skin, animated, jumping }: { skin: SkinDef; animated: boolean; jumping: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
   const baseModel = useFBX(MODEL_URL);
   const idleFbx = useFBX(IDLE_URL);
   const jumpFbx = useFBX(JUMP_URL);
-  const texture = useTexture(tier.skin);
+  const texture = useTexture(skin.url);
 
   // Each instance needs its own skinned mesh tree so the animation mixer
   // doesn't fight with siblings. Normalize to a fixed height centered on the
@@ -109,16 +92,18 @@ function CharacterModel({ tier, jumping }: { tier: Tier; jumping: boolean }) {
 
   const { actions, mixer } = useAnimations(clips, groupRef);
 
-  // Idle loops continuously as the base state.
+  // Idle loops continuously as the base state — only when animated.
   useEffect(() => {
+    if (!animated) return;
     actions.idle?.reset().fadeIn(0.2).play();
     return () => {
       mixer.stopAllAction();
     };
-  }, [actions, mixer]);
+  }, [actions, mixer, animated]);
 
   // On hover (detail view) play jump once, then settle back into idle.
   useEffect(() => {
+    if (!animated) return;
     const jump = actions.jump;
     const idle = actions.idle;
     if (!jump || !idle) return;
@@ -132,7 +117,7 @@ function CharacterModel({ tier, jumping }: { tier: Tier; jumping: boolean }) {
       jump.fadeOut(0.2);
       idle.reset().fadeIn(0.2).play();
     }
-  }, [jumping, actions]);
+  }, [jumping, actions, animated]);
 
   return (
     <group ref={groupRef} rotation={[0, Math.PI, 0]}>
@@ -141,8 +126,15 @@ function CharacterModel({ tier, jumping }: { tier: Tier; jumping: boolean }) {
   );
 }
 
-export default function Character3D({ level, size = 64, className = "", withFrame = false }: Props) {
-  const tier = SKIN_BY_TIER[tierKeyFromLevel(level)];
+export default function Character3D({
+  level,
+  size = 64,
+  className = "",
+  withFrame = false,
+  skin,
+  animated = true,
+}: Props) {
+  const skinDef = skin ? skinById(skin) : skinFromLevel(level);
   const [hover, setHover] = useState(false);
 
   const canvas = (
@@ -158,9 +150,9 @@ export default function Character3D({ level, size = 64, className = "", withFram
       >
         <ambientLight intensity={0.7} />
         <directionalLight position={[2, 3, 2]} intensity={1.1} />
-        <directionalLight position={[-2, 1, -2]} intensity={0.4} color={tier.rim ?? "#ffffff"} />
+        <directionalLight position={[-2, 1, -2]} intensity={0.4} color={skinDef.rim ?? "#ffffff"} />
         <Suspense fallback={null}>
-          <CharacterModel tier={tier} jumping={hover} />
+          <CharacterModel skin={skinDef} animated={animated} jumping={animated && hover} />
         </Suspense>
       </Canvas>
     </div>
@@ -175,10 +167,10 @@ export default function Character3D({ level, size = 64, className = "", withFram
       style={{
         width: size + 16,
         height: size + 16,
-        borderColor: tier.rim ?? undefined,
-        boxShadow: tier.rim ? `0 0 16px -2px ${tier.rim}55` : undefined,
+        borderColor: skinDef.rim ?? undefined,
+        boxShadow: skinDef.rim ? `0 0 16px -2px ${skinDef.rim}55` : undefined,
       }}
-      aria-label={`Lv.${level} ${tier.label} 캐릭터`}
+      aria-label={`Lv.${level} ${skinDef.label} 캐릭터`}
     >
       {canvas}
     </div>

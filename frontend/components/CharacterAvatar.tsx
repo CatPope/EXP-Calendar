@@ -1,12 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { SkinId } from "@/lib/character";
 
 interface Props {
   level: number;
   size?: number;
   className?: string;
   withFrame?: boolean;
+  skin?: SkinId;
+  animated?: boolean;
 }
 
 function PlaceholderAvatar({ size = 64, withFrame, className = "" }: Props) {

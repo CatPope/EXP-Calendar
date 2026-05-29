@@ -33,7 +33,7 @@ export default function ShowcaseListPage() {
               href={`/showcase/${u.user_id}`}
               className="card hover:border-accent transition-colors flex items-center gap-3"
             >
-              <CharacterAvatar level={u.level} size={48} />
+              <CharacterAvatar level={u.level} size={48} animated={false} />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{u.display_name}</div>
                 <div className="text-xs text-text-2">Lv. {u.level}</div>
