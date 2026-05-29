@@ -4,8 +4,9 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json* .npmrc* ./
 # next-pwa는 peer로 next를 요구. lockfile이 없으면 install로 폴백.
+# .npmrc의 legacy-peer-deps로 R3F v9 + React 19 peer 충돌 우회.
 RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
 # ---------- builder ----------
