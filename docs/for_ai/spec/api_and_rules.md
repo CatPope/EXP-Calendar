@@ -204,7 +204,7 @@ UserTitle:
 ```
 - 본인의 상세 일정/실패율은 노출하지 않음 (FR-SOC-03)
 
-### GET /api/showcase
+### GET /api/showcase/recommendations
 - res: `{ data: [{ user_id, display_name, level, equipped_title }] }`  ← 추천 목록 (다른 사용자 최대 20)
 
 ## 8. Stats

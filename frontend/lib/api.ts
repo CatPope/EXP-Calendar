@@ -258,7 +258,7 @@ export const Api = {
       "/api/persona/define",
       { method: "POST", body: JSON.stringify({ definition }) }
     ),
-  listShowcase: () => apiFetch<ShowcaseSummary[]>("/api/showcase"),
+  listShowcase: () => apiFetch<ShowcaseSummary[]>("/api/showcase/recommendations"),
   showcaseDetail: (user_id: string) =>
     apiFetch<ShowcaseDetail>(`/api/showcase/${user_id}`),
 
