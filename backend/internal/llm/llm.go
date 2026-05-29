@@ -135,18 +135,37 @@ func (c *Client) Generate(ctx context.Context, definition, characterType string,
 		"https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
 		url.PathEscape(c.Model), url.QueryEscape(c.APIKey),
 	)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
-	if err != nil {
-		return "", err
+	// Gemini-2.5-flash가 간헐적으로 503(UNAVAILABLE)/429를 반환하므로 짧은
+	// 백오프로 최대 3회 재시도한 뒤에야 mock으로 폴백한다.
+	var respBytes []byte
+	var statusCode int
+	const maxAttempts = 3
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		req, reqErr := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+		if reqErr != nil {
+			return "", reqErr
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, doErr := c.HTTP.Do(req)
+		if doErr != nil {
+			if attempt < maxAttempts-1 {
+				time.Sleep(time.Duration(attempt+1) * 400 * time.Millisecond)
+				continue
+			}
+			return mockResponse(def, characterType, clean), nil
+		}
+		respBytes, _ = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		statusCode = resp.StatusCode
+		// 일시적 과부하/레이트리밋이면 재시도.
+		if (statusCode == http.StatusServiceUnavailable || statusCode == http.StatusTooManyRequests) &&
+			attempt < maxAttempts-1 {
+			time.Sleep(time.Duration(attempt+1) * 400 * time.Millisecond)
+			continue
+		}
+		break
 	}
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return mockResponse(def, characterType, clean), nil
-	}
-	defer resp.Body.Close()
-	respBytes, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode/100 != 2 {
+	if statusCode/100 != 2 {
 		return mockResponse(def, characterType, clean), nil
 	}
 	var parsed struct {

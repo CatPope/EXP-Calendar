@@ -2,27 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 컬러는 RGB 채널값으로 보관 → tailwind가 rgb(var(--x) / <alpha-value>)로
+   참조하므로 opacity modifier(bg-accent/20 등)가 정상 동작하고, data-theme
+   스왑으로 모든 tailwind 컬러가 즉시 반영된다. */
 :root {
-  --bg-base: #0D1117;
-  --bg-surface: #161B22;
-  --bg-surface-2: #21262D;
-  --border-default: #30363D;
-  --text-1: #E6EDF3;
-  --text-2: #8B949E;
-  --accent: #8B5CF6;
-  --success: #06D6A0;
-  --gold: #FFD700;
-  --danger: #FF6B6B;
+  --bg-base: 13 17 23;
+  --bg-surface: 22 27 34;
+  --bg-surface-2: 33 38 45;
+  --border-default: 48 54 61;
+  --text-1: 230 237 243;
+  --text-2: 139 148 158;
+  --accent: 139 92 246;
+  --success: 6 214 160;
+  --gold: 255 215 0;
+  --danger: 255 107 107;
 }
 
-/* 라이트 테마: 변수만 오버라이드 (tailwind 컬러가 var() 참조) */
+/* 라이트 테마: 변수만 오버라이드 */
 :root[data-theme="light"] {
-  --bg-base: #F6F8FA;
-  --bg-surface: #FFFFFF;
-  --bg-surface-2: #EAEEF2;
-  --border-default: #D0D7DE;
-  --text-1: #1F2328;
-  --text-2: #59636E;
+  --bg-base: 246 248 250;
+  --bg-surface: 255 255 255;
+  --bg-surface-2: 234 238 242;
+  --border-default: 208 215 222;
+  --text-1: 31 35 40;
+  --text-2: 89 99 110;
 }
 
 /* 폰트 크기 스케일 (rem 기반 tailwind 텍스트가 비례 확대) */
@@ -32,8 +35,8 @@
 
 html,
 body {
-  background-color: var(--bg-base);
-  color: var(--text-1);
+  background-color: rgb(var(--bg-base));
+  color: rgb(var(--text-1));
   font-family: Inter, "Noto Sans KR", system-ui, sans-serif;
   min-height: 100vh;
 }
@@ -72,9 +75,9 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-surface);
+  background: rgb(var(--bg-surface));
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-default);
+  background: rgb(var(--border-default));
   border-radius: 4px;
 }

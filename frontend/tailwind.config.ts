@@ -10,16 +10,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        base: "#0D1117",
-        surface: "#161B22",
-        "surface-2": "#21262D",
-        border: "#30363D",
-        "text-1": "#E6EDF3",
-        "text-2": "#8B949E",
-        accent: "#8B5CF6",
-        success: "#06D6A0",
-        gold: "#FFD700",
-        danger: "#FF6B6B"
+        base: "rgb(var(--bg-base) / <alpha-value>)",
+        surface: "rgb(var(--bg-surface) / <alpha-value>)",
+        "surface-2": "rgb(var(--bg-surface-2) / <alpha-value>)",
+        border: "rgb(var(--border-default) / <alpha-value>)",
+        "text-1": "rgb(var(--text-1) / <alpha-value>)",
+        "text-2": "rgb(var(--text-2) / <alpha-value>)",
+        accent: "rgb(var(--accent) / <alpha-value>)",
+        success: "rgb(var(--success) / <alpha-value>)",
+        gold: "rgb(var(--gold) / <alpha-value>)",
+        danger: "rgb(var(--danger) / <alpha-value>)"
       },
       fontFamily: {
         sans: ["Inter", "Noto Sans KR", "system-ui", "sans-serif"]
