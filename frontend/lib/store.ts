@@ -35,6 +35,12 @@ interface AppState {
   // user settings (theme + font size), localStorage-backed
   settings: Settings;
   setSettings: (patch: Partial<Settings>) => void;
+
+  // UI chrome: sidebar drawer + settings modal
+  sidebarOpen: boolean;
+  setSidebarOpen: (v: boolean) => void;
+  settingsOpen: boolean;
+  setSettingsOpen: (v: boolean) => void;
 }
 
 function uid(): string {
@@ -64,5 +70,10 @@ export const useAppStore = create<AppState>((set) => ({
       saveSettings(next);
       applySettings(next);
       return { settings: next };
-    })
+    }),
+
+  sidebarOpen: false,
+  setSidebarOpen: (v) => set({ sidebarOpen: v }),
+  settingsOpen: false,
+  setSettingsOpen: (v) => set({ settingsOpen: v })
 }));

@@ -10,7 +10,7 @@ import {
   Sparkles,
   Users,
   LogOut,
-  Menu,
+  Settings,
   X
 } from "lucide-react";
 import { Api, humanizeError } from "@/lib/api";
@@ -18,6 +18,7 @@ import { clearTokens, getStoredAccessToken } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
 import { loadSettings } from "@/lib/settings";
 import HUD from "@/components/HUD";
+import SettingsModal from "@/components/SettingsModal";
 import Spinner from "@/components/common/Spinner";
 
 const NAV = [
@@ -35,9 +36,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const user = useAppStore((s) => s.user);
   const pushToast = useAppStore((s) => s.pushToast);
   const setSettings = useAppStore((s) => s.setSettings);
+  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
+  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const settingsOpen = useAppStore((s) => s.settingsOpen);
+  const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
 
   const [booting, setBooting] = useState(true);
-  const [navOpen, setNavOpen] = useState(false);
 
   // 저장된 테마/폰트 설정을 마운트 시 적용.
   useEffect(() => {
@@ -90,83 +94,78 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col">
       <HUD />
 
-      <div className="flex-1 flex">
-        {/* sidebar (md+) */}
-        <aside className="hidden md:flex md:w-56 shrink-0 border-r border-border bg-surface/40 flex-col">
-          <nav className="p-3 flex-1 space-y-1">
-            {NAV.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href || pathname.startsWith(href + "/");
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
-                    active
-                      ? "bg-accent/20 text-accent border border-accent/40"
-                      : "text-text-2 hover:bg-surface-2 hover:text-text-1"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="p-3 border-t border-border">
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-danger/10 hover:text-danger"
-            >
-              <LogOut className="h-4 w-4" />
-              로그아웃
-            </button>
-          </div>
-        </aside>
+      {/* dim overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-40"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden
+        />
+      )}
 
-        {/* mobile hamburger */}
-        <div className="md:hidden fixed bottom-4 left-4 z-40">
+      {/* sidebar drawer (YouTube-style: 햄버거로 토글) */}
+      <aside
+        className={`fixed top-0 left-0 z-50 h-full w-64 bg-surface border-r border-border flex flex-col transition-transform duration-200 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <span className="font-bold text-accent">EXP Calendar</span>
           <button
-            onClick={() => setNavOpen((v) => !v)}
-            aria-label="메뉴"
-            className="h-12 w-12 rounded-full bg-accent text-white shadow-lg flex items-center justify-center"
+            type="button"
+            aria-label="메뉴 닫기"
+            onClick={() => setSidebarOpen(false)}
+            className="text-text-2 hover:text-text-1"
           >
-            {navOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <X className="h-5 w-5" />
           </button>
-          {navOpen && (
-            <div
-              className="fixed inset-0 bg-black/60 z-30"
-              onClick={() => setNavOpen(false)}
-            >
-              <nav
-                className="absolute bottom-20 left-4 right-4 bg-surface border border-border rounded-xl p-3 space-y-1"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {NAV.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setNavOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-1 hover:bg-surface-2"
-                  >
-                    <Icon className="h-4 w-4" /> {label}
-                  </Link>
-                ))}
-                <button
-                  onClick={onLogout}
-                  className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-danger hover:bg-danger/10"
-                >
-                  <LogOut className="h-4 w-4" />
-                  로그아웃
-                </button>
-              </nav>
-            </div>
-          )}
         </div>
+        <nav className="p-3 flex-1 space-y-1 overflow-y-auto">
+          {NAV.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                  active
+                    ? "bg-accent/20 text-accent border border-accent/40"
+                    : "text-text-2 hover:bg-surface-2 hover:text-text-1"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+        <div className="p-3 border-t border-border space-y-1">
+          <button
+            onClick={() => {
+              setSettingsOpen(true);
+              setSidebarOpen(false);
+            }}
+            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-surface-2 hover:text-text-1"
+          >
+            <Settings className="h-4 w-4" />
+            설정
+          </button>
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-danger/10 hover:text-danger"
+          >
+            <LogOut className="h-4 w-4" />
+            로그아웃
+          </button>
+        </div>
+      </aside>
 
-        <main className="flex-1 min-w-0 p-4 md:p-6 max-w-7xl mx-auto w-full">
-          {children}
-        </main>
-      </div>
+      <main className="flex-1 min-w-0 p-4 md:p-6 max-w-7xl mx-auto w-full">
+        {children}
+      </main>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }
