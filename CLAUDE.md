@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Backend | Go 1.22 + Gin + pgx/v5 + golang-jwt/v5 |
 | DB | PostgreSQL 15 (pgvector pg15 이미지) |
 | Infra | Docker Compose (db / backend / frontend / 선택 nginx) |
-| 외부 | Google OAuth 2.0 (idtoken), OpenAI Chat Completions, FCM/Web Push |
+| 외부 | Google OAuth 2.0 (idtoken), Google Gemini (generateContent), FCM/Web Push |
 
 ## Source of Truth
 
@@ -70,7 +70,7 @@ cd frontend ; npm run build
 - `internal/handlers/` — 도메인별 파일(`auth.go`, `me.go`, `schedules.go`, `quests.go`, `shop.go`, `titles.go`, `persona.go`, `showcase.go`, `stats.go`, `notifications.go`). 응답 envelope 헬퍼는 `common.go`, KST(Asia/Seoul) 일자 유틸은 `time.go`
 - `internal/game/engine.go` — **게임 규칙의 단일 진실**: `CalculateReward`, `LevelFromExp`(`1 + floor(sqrt(total_exp/100))`), `ExpToNextLevel`, `ApplyDailyCap`, `TitlesUnlockedBetween`. 규칙 변경은 반드시 이 파일에서. SSoT 문서와 동기화 필수
 - `internal/repo/` — 도메인별 DAO(`users/schedules/titles/quests/shop/rewards/refresh/push`). 핸들러는 SQL 직접 작성하지 말고 repo를 통한다
-- `internal/llm/llm.go` — OpenAI Chat Completions 직접 호출 + `OPENAI_API_KEY` 없을 때 캐릭터별 deterministic mock 폴백 + 프롬프트 인젝션 sanitize
+- `internal/llm/llm.go` — Google Gemini generateContent 직접 호출 + `GEMINI_API_KEY` 없을 때 캐릭터별 deterministic mock 폴백 + 프롬프트 인젝션 sanitize
 - `internal/auth/` — `jwt.go`(HS256 access + opaque refresh 토큰 발급/검증), `google.go`(`idtoken.Validate` 우선, audience 미설정 시 `tokeninfo` HTTP fallback)
 - `internal/middleware/auth.go` — `Authorization: Bearer` 파싱 후 `userID`를 gin context에 주입
 - `migrations/001_init.sql` + `002_seed.sql` — ERD는 SRS 3.4.1 기준. 시드: 칭호 6종 + 상점 5종. **컬럼명 주의**: SRS의 `last_points_reset_at` ↔ 코드/DB의 `daily_points_earned_date`(같은 의미)

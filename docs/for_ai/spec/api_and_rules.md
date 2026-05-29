@@ -309,7 +309,7 @@ System Prompt 템플릿:
 사용자의 칭호: {titles}
 ```
 - 프롬프트 인젝션 방어: 사용자 입력은 user message로만 전달, 시스템 명령 무시 지시 포함
-- OPENAI_API_KEY 없으면 character_type별 deterministic suffix 추가 (mock)
+- GEMINI_API_KEY 없으면 character_type별 deterministic suffix 추가 (mock)
 
 ---
 
@@ -334,8 +334,8 @@ Backend:
 - `JWT_ACCESS_TTL_MIN=60`
 - `JWT_REFRESH_TTL_DAYS=14`
 - `GOOGLE_OAUTH_CLIENT_ID` (선택)
-- `OPENAI_API_KEY` (선택, 없으면 mock)
-- `LLM_MODEL=gpt-4o-mini`
+- `GEMINI_API_KEY` (선택, 없으면 mock)
+- `LLM_MODEL=gemini-2.0-flash`
 - `DEV_MODE=true`
 - `PORT=8080`
 - `ALLOWED_ORIGINS=http://localhost:3000`
