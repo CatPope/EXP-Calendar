@@ -109,8 +109,8 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.POST("/shop/purchase", shopH.Purchase)
 
 		// titles
-		authed.GET("/titles/mine", titlesH.ListMine)
-		authed.PATCH("/titles/:id", titlesH.Equip)
+		authed.GET("/titles/me", titlesH.ListMine)
+		authed.PATCH("/titles/:id/equip", titlesH.Equip)
 
 		// persona
 		authed.POST("/persona/generate", personaH.Generate)
