@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { useFBX, useTexture, useAnimations, Center } from "@react-three/drei";
+import { useFBX, useTexture, useAnimations } from "@react-three/drei";
 import * as THREE from "three";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
 
@@ -47,8 +47,22 @@ function CharacterModel({ tier, jumping }: { tier: Tier; jumping: boolean }) {
   const texture = useTexture(tier.skin);
 
   // Each instance needs its own skinned mesh tree so the animation mixer
-  // doesn't fight with siblings.
-  const model = useMemo(() => cloneSkeleton(baseModel), [baseModel]);
+  // doesn't fight with siblings. Normalize to a fixed height centered on the
+  // origin so camera framing is deterministic regardless of the FBX's native
+  // scale (the raw Kenney model is ~hundreds of units tall).
+  const model = useMemo(() => {
+    const cloned = cloneSkeleton(baseModel);
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+    const targetHeight = 1.5;
+    const scale = size.y > 0 ? targetHeight / size.y : 1;
+    cloned.scale.setScalar(scale);
+    cloned.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+    return cloned;
+  }, [baseModel]);
 
   // Name the clips so useAnimations exposes actions.idle / actions.jump.
   const clips = useMemo(() => {
@@ -121,11 +135,9 @@ function CharacterModel({ tier, jumping }: { tier: Tier; jumping: boolean }) {
   }, [jumping, actions]);
 
   return (
-    <Center top>
-      <group ref={groupRef} scale={0.012} rotation={[0, Math.PI, 0]}>
-        <primitive object={model} />
-      </group>
-    </Center>
+    <group ref={groupRef} rotation={[0, Math.PI, 0]}>
+      <primitive object={model} />
+    </group>
   );
 }
 
@@ -140,7 +152,7 @@ export default function Character3D({ level, size = 64, className = "", withFram
       onMouseLeave={() => setHover(false)}
     >
       <Canvas
-        camera={{ position: [0, 0.4, 2.4], fov: 28 }}
+        camera={{ position: [0, 0.1, 3.2], fov: 30 }}
         gl={{ antialias: true, alpha: true, preserveDrawingBuffer: false }}
         dpr={[1, 2]}
       >
