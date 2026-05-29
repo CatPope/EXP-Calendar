@@ -25,6 +25,7 @@ type User struct {
 	PersonaTokens         int       `json:"persona_tokens"`
 	PersonaShowcaseText   string    `json:"persona_showcase_text"`
 	PersonaLLMOutput      string    `json:"persona_llm_output"`
+	CharacterSkin         string    `json:"character_skin"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"-"`
 }

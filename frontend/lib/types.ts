@@ -31,6 +31,7 @@ export interface User {
   persona_character_type: CharacterType | string;
   persona_definition: string;
   persona_tokens: number;
+  character_skin: string;
   tendency?: Tendency | string;
   equipped_title: Title | null;
 }
@@ -96,6 +97,7 @@ export interface ShowcaseSummary {
   display_name: string;
   level: number;
   equipped_title: Title | null;
+  character_skin: string;
 }
 
 export interface ShowcaseDetail {
@@ -107,6 +109,7 @@ export interface ShowcaseDetail {
   displayed_titles: Title[];
   persona_showcase_text: string;
   persona_llm_output: string;
+  character_skin: string;
   grass: Record<string, number>;
 }
 

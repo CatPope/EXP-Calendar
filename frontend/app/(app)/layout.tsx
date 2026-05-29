@@ -16,6 +16,7 @@ import {
 import { Api, humanizeError } from "@/lib/api";
 import { clearTokens, getStoredAccessToken } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
+import { loadSettings } from "@/lib/settings";
 import HUD from "@/components/HUD";
 import Spinner from "@/components/common/Spinner";
 
@@ -33,9 +34,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAppStore((s) => s.setUser);
   const user = useAppStore((s) => s.user);
   const pushToast = useAppStore((s) => s.pushToast);
+  const setSettings = useAppStore((s) => s.setSettings);
 
   const [booting, setBooting] = useState(true);
   const [navOpen, setNavOpen] = useState(false);
+
+  // 저장된 테마/폰트 설정을 마운트 시 적용.
+  useEffect(() => {
+    setSettings(loadSettings());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     (async () => {

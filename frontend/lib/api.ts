@@ -182,6 +182,11 @@ export const Api = {
       method: "POST",
       body: JSON.stringify({ tendency })
     }),
+  setCharacterSkin: (skin: string) =>
+    apiFetch<{ ok: true }>("/api/me/character", {
+      method: "PATCH",
+      body: JSON.stringify({ skin })
+    }),
 
   // schedules
   listSchedules: (from: string, to: string) =>
@@ -207,6 +212,13 @@ export const Api = {
     apiFetch<CompleteResponse>(`/api/schedules/${id}/complete`, {
       method: "POST"
     }),
+  uncompleteSchedule: (id: string) =>
+    apiFetch<{
+      schedule: Schedule;
+      exp_removed: number;
+      points_removed: number;
+      new_level: number;
+    }>(`/api/schedules/${id}/uncomplete`, { method: "POST" }),
 
   // quests
   todayQuests: () => apiFetch<Quest[]>("/api/quests/today"),

@@ -112,6 +112,22 @@ export default function CalendarPage() {
     }
   };
 
+  const onUncompleteSchedule = async (s: Schedule) => {
+    try {
+      const { schedule: updated } = await Api.uncompleteSchedule(s.id);
+      patchLocal((arr) => arr.map((x) => (x.id === updated.id ? updated : x)));
+      pushToast("success", "완료를 취소하고 보상을 회수했습니다.");
+      try {
+        const me = await Api.me();
+        useAppStore.getState().setUser(me);
+      } catch {
+        /* non-fatal */
+      }
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    }
+  };
+
   const onDropToDate = async (id: string, ymd: string) => {
     const s = schedules.find((x) => x.id === id);
     if (!s) return;
@@ -236,6 +252,7 @@ export default function CalendarPage() {
         schedule={editing}
         onSaved={reload}
         onComplete={onCompleteSchedule}
+        onUncomplete={onUncompleteSchedule}
       />
     </div>
   );

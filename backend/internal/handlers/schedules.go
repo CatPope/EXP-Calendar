@@ -293,6 +293,100 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 	})
 }
 
+type uncompleteResult struct {
+	Schedule      *models.Schedule `json:"schedule"`
+	ExpRemoved    int              `json:"exp_removed"`
+	PointsRemoved int              `json:"points_removed"`
+	NewLevel      int              `json:"new_level"`
+}
+
+// Uncomplete reverts a COMPLETED schedule back to PENDING and reverses the
+// granted reward (EXP/points/level + daily cap) in one transaction. Earned
+// titles are intentionally NOT revoked — they are milestones, not balances.
+func (h *SchedulesHandler) Uncomplete(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "invalid id")
+		return
+	}
+	ctx := c.Request.Context()
+
+	sched, err := h.Schedules.GetByID(ctx, uid, id)
+	if err != nil {
+		RespondErr(c, http.StatusNotFound, "NOT_FOUND", "schedule not found")
+		return
+	}
+	if sched.Status != "COMPLETED" {
+		RespondErr(c, http.StatusBadRequest, "NOT_COMPLETED", "완료된 일정만 취소할 수 있습니다.")
+		return
+	}
+
+	tx, err := h.Pool.Begin(ctx)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	wasNot, err := h.Schedules.MarkUncompletedTx(ctx, tx, uid, id)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	if wasNot {
+		RespondErr(c, http.StatusConflict, "NOT_COMPLETED", "이미 미완료 상태입니다.")
+		return
+	}
+
+	exp, pts, err := h.Rewards.ScheduleRewardTx(ctx, tx, uid, id)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	u, err := h.Users.GetByIDTx(ctx, tx, uid)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	newTotalExp := u.TotalExp - exp
+	if newTotalExp < 0 {
+		newTotalExp = 0
+	}
+	newLevel := game.LevelFromExp(newTotalExp)
+	if _, err := tx.Exec(ctx,
+		`UPDATE users SET total_exp=$1, level=$2,
+		 current_points=GREATEST(0, current_points-$3),
+		 daily_points_earned=GREATEST(0, daily_points_earned-$3),
+		 updated_at=now() WHERE id=$4`,
+		newTotalExp, newLevel, pts, uid); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+
+	if err := h.Rewards.DeleteScheduleTx(ctx, tx, uid, id); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+
+	sched, _ = h.Schedules.GetByID(ctx, uid, id)
+	Respond(c, http.StatusOK, uncompleteResult{
+		Schedule:      sched,
+		ExpRemoved:    exp,
+		PointsRemoved: pts,
+		NewLevel:      newLevel,
+	})
+}
+
 // applyReward applies the daily-cap, persists the new EXP/points/level on the
 // user row, and writes a reward_log entry. Returns the post-update level, the
 // granted points, and the cap-reached flag.

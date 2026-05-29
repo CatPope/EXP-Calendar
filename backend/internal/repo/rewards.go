@@ -22,6 +22,22 @@ func (r *RewardRepo) LogTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID, sch
 	return err
 }
 
+// ScheduleRewardTx sums the exp/points logged for a given schedule (for reversal
+// on uncomplete). Returns (0,0) when no rows exist.
+func (r *RewardRepo) ScheduleRewardTx(ctx context.Context, tx pgx.Tx, userID, scheduleID uuid.UUID) (exp, points int, err error) {
+	err = tx.QueryRow(ctx,
+		`SELECT COALESCE(SUM(exp_gained),0), COALESCE(SUM(points_gained),0)
+		 FROM reward_log WHERE user_id=$1 AND schedule_id=$2`,
+		userID, scheduleID).Scan(&exp, &points)
+	return
+}
+
+// DeleteScheduleTx removes all reward_log rows for a schedule (uncomplete).
+func (r *RewardRepo) DeleteScheduleTx(ctx context.Context, tx pgx.Tx, userID, scheduleID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `DELETE FROM reward_log WHERE user_id=$1 AND schedule_id=$2`, userID, scheduleID)
+	return err
+}
+
 // GrassByDay returns dates within [from, to] mapped to schedule-completion counts.
 func (r *RewardRepo) GrassByDay(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]int, error) {
 	rows, err := r.Pool.Query(ctx,

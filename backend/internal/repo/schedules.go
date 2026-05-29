@@ -136,6 +136,19 @@ func (r *ScheduleRepo) MarkCompletedTx(ctx context.Context, tx pgx.Tx, userID, i
 	return tag.RowsAffected() == 0, nil
 }
 
+// MarkUncompletedTx atomically transitions COMPLETED→PENDING (clearing completed_at).
+// Returns (wasNotCompleted=true) if the row wasn't COMPLETED (no-op).
+func (r *ScheduleRepo) MarkUncompletedTx(ctx context.Context, tx pgx.Tx, userID, id uuid.UUID) (bool, error) {
+	tag, err := tx.Exec(ctx,
+		`UPDATE schedules SET status='PENDING', completed_at=NULL, updated_at=now()
+		 WHERE id=$1 AND user_id=$2 AND status='COMPLETED'`,
+		id, userID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 0, nil
+}
+
 func itoa(i int) string {
 	// minimal int→string for small positive numbers
 	if i == 0 {

@@ -2,6 +2,12 @@
 
 import { create } from "zustand";
 import type { RewardResult, User } from "./types";
+import {
+  DEFAULT_SETTINGS,
+  applySettings,
+  saveSettings,
+  type Settings,
+} from "./settings";
 
 export type ToastKind = "info" | "success" | "error";
 
@@ -25,6 +31,10 @@ interface AppState {
   reward: RewardResult | null;
   showReward: (r: RewardResult) => void;
   clearReward: () => void;
+
+  // user settings (theme + font size), localStorage-backed
+  settings: Settings;
+  setSettings: (patch: Partial<Settings>) => void;
 }
 
 function uid(): string {
@@ -45,5 +55,14 @@ export const useAppStore = create<AppState>((set) => ({
 
   reward: null,
   showReward: (r) => set({ reward: r }),
-  clearReward: () => set({ reward: null })
+  clearReward: () => set({ reward: null }),
+
+  settings: DEFAULT_SETTINGS,
+  setSettings: (patch) =>
+    set((s) => {
+      const next = { ...s.settings, ...patch };
+      saveSettings(next);
+      applySettings(next);
+      return { settings: next };
+    })
 }));

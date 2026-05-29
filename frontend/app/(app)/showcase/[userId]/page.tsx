@@ -12,6 +12,7 @@ import GrassGraph from "@/components/GrassGraph";
 import CharacterAvatar from "@/components/CharacterAvatar";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
+import type { SkinId } from "@/lib/character";
 
 export default function ShowcaseDetailPage() {
   const params = useParams<{ userId: string }>();
@@ -81,7 +82,11 @@ export default function ShowcaseDetailPage() {
 
           {/* 캐릭터: 큰 비주얼 */}
           <div className="card flex justify-center py-6">
-            <CharacterAvatar level={detail.level} size={320} />
+            <CharacterAvatar
+              level={detail.level}
+              skin={(detail.character_skin as SkinId) || undefined}
+              size={320}
+            />
           </div>
 
           {detail.persona_showcase_text && (

@@ -119,7 +119,12 @@ func (c *Client) Generate(ctx context.Context, definition, characterType string,
 		},
 		"generationConfig": map[string]any{
 			"temperature":     0.7,
-			"maxOutputTokens": 300,
+			"maxOutputTokens": 512,
+			// gemini-2.5-flash는 thinking 모델 — 추론 토큰이 출력 예산을 잠식해
+			// 답변이 중간에 잘린다. thinking을 꺼 출력 토큰을 전부 답변에 쓴다.
+			"thinkingConfig": map[string]any{
+				"thinkingBudget": 0,
+			},
 		},
 	}
 	body, err := json.Marshal(payload)

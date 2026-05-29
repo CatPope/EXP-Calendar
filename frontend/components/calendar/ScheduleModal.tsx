@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Trash2 } from "lucide-react";
+import { Check, Trash2, RotateCcw } from "lucide-react";
 import Modal from "@/components/common/Modal";
 import Button from "@/components/common/Button";
 import type { Difficulty, Schedule } from "@/lib/types";
@@ -18,6 +18,7 @@ interface Props {
   schedule?: Schedule | null;
   onSaved: () => void;
   onComplete?: (s: Schedule) => Promise<void> | void;
+  onUncomplete?: (s: Schedule) => Promise<void> | void;
 }
 
 export default function ScheduleModal({
@@ -26,7 +27,8 @@ export default function ScheduleModal({
   dateYmd,
   schedule,
   onSaved,
-  onComplete
+  onComplete,
+  onUncomplete
 }: Props) {
   const pushToast = useAppStore((s) => s.pushToast);
   const isEdit = !!schedule;
@@ -105,6 +107,17 @@ export default function ScheduleModal({
     }
   }
 
+  async function onUncompleteClick() {
+    if (!schedule || !onUncomplete) return;
+    setBusy(true);
+    try {
+      await onUncomplete(schedule);
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onDelete() {
     if (!schedule) return;
     if (!confirm("이 일정을 삭제할까요?")) return;
@@ -148,6 +161,17 @@ export default function ScheduleModal({
               leading={<Check className="h-4 w-4" />}
             >
               완료
+            </Button>
+          )}
+          {isEdit && schedule?.status === "COMPLETED" && onUncomplete && (
+            <Button
+              variant="ghost"
+              size="md"
+              onClick={onUncompleteClick}
+              loading={busy}
+              leading={<RotateCcw className="h-4 w-4" />}
+            >
+              완료 취소
             </Button>
           )}
           <Button variant="ghost" size="md" onClick={onClose} disabled={busy}>

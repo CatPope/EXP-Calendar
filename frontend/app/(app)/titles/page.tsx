@@ -10,14 +10,7 @@ import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type { UserTitle } from "@/lib/types";
-import {
-  SKINS,
-  unlockedSkins,
-  getStoredSkin,
-  setStoredSkin,
-  skinFromLevel,
-  type SkinId,
-} from "@/lib/character";
+import { SKINS, unlockedSkins, skinFromLevel, type SkinId } from "@/lib/character";
 
 const GRADE_LABEL: Record<string, string> = {
   COMMON: "일반",
@@ -31,6 +24,7 @@ export default function TitlesPage() {
 
   const pushToast = useAppStore((s) => s.pushToast);
   const setUser = useAppStore((s) => s.setUser);
+  const patchUser = useAppStore((s) => s.patchUser);
 
   const { data, loading, error, dismissError } = useAsyncData<UserTitle[]>(
     () => Api.myTitles(),
@@ -40,7 +34,7 @@ export default function TitlesPage() {
   const [overrides, setOverrides] = useState<UserTitle[] | null>(null);
   const titles = overrides ?? data ?? [];
 
-  // 캐릭터 디자인: 보유 칭호 등급으로 해금, 선택은 localStorage에 저장.
+  // 캐릭터 디자인: 보유 칭호 등급으로 해금, 선택은 서버(users.character_skin)에 저장.
   const user = useAppStore((s) => s.user);
   const level = user?.level ?? 1;
   const ownedGrades = titles.map((ut) => ut.title.grade);
@@ -49,15 +43,21 @@ export default function TitlesPage() {
 
   const [skin, setSkin] = useState<SkinId | null>(null);
   useEffect(() => {
-    setSkin(getStoredSkin() ?? skinFromLevel(level).id);
-  }, [level]);
+    const stored = (user?.character_skin as SkinId) || null;
+    setSkin(stored ?? skinFromLevel(level).id);
+  }, [level, user?.character_skin]);
   // 선택한 스킨이 아직 해금 안 됐으면 안전하게 레벨 기본값으로.
   const activeSkin: SkinId =
     skin && unlockedIds.has(skin) ? skin : skinFromLevel(level).id;
 
-  function selectSkin(id: SkinId) {
+  async function selectSkin(id: SkinId) {
     setSkin(id);
-    setStoredSkin(id);
+    patchUser({ character_skin: id });
+    try {
+      await Api.setCharacterSkin(id);
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    }
   }
 
   function applyLocal(updater: (arr: UserTitle[]) => UserTitle[]) {

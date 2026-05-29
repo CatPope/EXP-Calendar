@@ -18,7 +18,7 @@ func NewUserRepo(p *pgxpool.Pool) *UserRepo { return &UserRepo{Pool: p} }
 const userSelect = `SELECT id, email, display_name, google_sub, account_status, level,
 	total_exp, current_points, daily_points_earned, daily_points_earned_date,
 	tendency, persona_character_type, persona_definition, persona_tokens,
-	persona_showcase_text, persona_llm_output,
+	persona_showcase_text, persona_llm_output, character_skin,
 	created_at, updated_at FROM users`
 
 func scanUser(row pgx.Row) (*models.User, error) {
@@ -26,12 +26,18 @@ func scanUser(row pgx.Row) (*models.User, error) {
 	err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &u.GoogleSub, &u.AccountStatus, &u.Level,
 		&u.TotalExp, &u.CurrentPoints, &u.DailyPointsEarned, &u.DailyPointsEarnedDate,
 		&u.Tendency, &u.PersonaCharacterType, &u.PersonaDefinition, &u.PersonaTokens,
-		&u.PersonaShowcaseText, &u.PersonaLLMOutput,
+		&u.PersonaShowcaseText, &u.PersonaLLMOutput, &u.CharacterSkin,
 		&u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return &u, nil
+}
+
+// SetCharacterSkin persists the user's chosen 2D character skin id.
+func (r *UserRepo) SetCharacterSkin(ctx context.Context, id uuid.UUID, skin string) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE users SET character_skin=$1, updated_at=now() WHERE id=$2`, skin, id)
+	return err
 }
 
 func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {

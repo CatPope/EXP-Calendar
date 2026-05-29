@@ -98,6 +98,20 @@
 }
 ```
 
+### POST /api/schedules/:id/uncomplete
+- 완료(COMPLETED)된 일정만 가능, 아니면 `400 NOT_COMPLETED`
+- 지급된 EXP/포인트/레벨/일일한도를 역산(차감)하고 reward_log 삭제. 칭호는 회수하지 않음(마일스톤)
+- res: `{ data: { schedule: Schedule, exp_removed, points_removed, new_level } }`
+
+### PATCH /api/me/character
+- body: `{ "skin": "string" }` ← 2D 캐릭터 스킨 ID
+- res: `{ data: { ok: true } }`
+
+### POST /api/auth/dev-signup (dev)
+- body: `{ "email": "string", "display_name"?: "string" }`
+- 기존 계정이면 `409 ALREADY_EXISTS`. 신규 생성 후 로그인 토큰 발급
+- dev-login은 미등록 이메일에 `404 NEED_SIGNUP` 반환(자동 생성 안 함)
+
 Schedule 객체:
 ```json
 {

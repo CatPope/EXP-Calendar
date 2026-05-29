@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useAppStore } from "@/lib/store";
-import { Coins, Zap } from "lucide-react";
+import { Coins, Settings, Zap } from "lucide-react";
 import TitleBadge from "./TitleBadge";
+import SettingsModal from "./SettingsModal";
 
 export default function HUD() {
   const user = useAppStore((s) => s.user);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   if (!user) return null;
 
   const levelTotalExp = user.level * user.level * 100;
@@ -56,13 +59,22 @@ export default function HUD() {
           </div>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2">
           <TitleBadge
             title={user.equipped_title}
             modifier={user.equipped_title?.negative_modifier}
           />
+          <button
+            type="button"
+            aria-label="설정"
+            onClick={() => setSettingsOpen(true)}
+            className="text-text-2 hover:text-text-1 transition-colors"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
         </div>
       </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </header>
   );
 }

@@ -77,6 +77,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 	// Public auth routes (no JWT required).
 	api.POST("/auth/google", authH.Google)
 	api.POST("/auth/dev-login", authH.DevLogin)
+	api.POST("/auth/dev-signup", authH.DevSignup)
 	api.POST("/auth/refresh", authH.Refresh)
 
 	// Authed routes (Bearer access token required).
@@ -89,6 +90,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		// me / onboarding
 		authed.GET("/me", meH.Get)
 		authed.POST("/me/onboarding", meH.Onboarding)
+		authed.PATCH("/me/character", meH.SetCharacter)
 
 		// schedules
 		authed.GET("/schedules", schedH.List)
@@ -96,6 +98,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.PATCH("/schedules/:id", schedH.Patch)
 		authed.DELETE("/schedules/:id", schedH.Delete)
 		authed.POST("/schedules/:id/complete", schedH.Complete)
+		authed.POST("/schedules/:id/uncomplete", schedH.Uncomplete)
 
 		// quests
 		authed.GET("/quests/today", questsH.Today)

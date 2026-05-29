@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch, humanizeError } from "@/lib/api";
+import { apiFetch, humanizeError, ApiError } from "@/lib/api";
 import { setTokens } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
 import type { AuthResponse, User } from "@/lib/types";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
-import { LogIn, Sparkles } from "lucide-react";
+import { LogIn, Sparkles, UserPlus } from "lucide-react";
+
+type AuthMode = "login" | "signup";
 
 const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
@@ -24,6 +26,7 @@ export default function LoginPage() {
   const setUser = useAppStore((s) => s.setUser);
   const [email, setEmail] = useState("dev@example.com");
   const [displayName, setDisplayName] = useState("Dev User");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleReady, setGoogleReady] = useState(false);
@@ -80,20 +83,31 @@ export default function LoginPage() {
     }
   }
 
-  async function handleDevLogin(e: React.FormEvent) {
+  async function handleDevAuth(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr("");
+    const endpoint = mode === "signup" ? "/api/auth/dev-signup" : "/api/auth/dev-login";
     try {
-      const data = await apiFetch<AuthResponse>("/api/auth/dev-login", {
+      const data = await apiFetch<AuthResponse>(endpoint, {
         method: "POST",
         body: JSON.stringify({ email, display_name: displayName })
       });
       setTokens(data.access_token, data.refresh_token);
       setUser(data.user);
-      router.replace("/calendar");
+      // 신규 가입은 성향 설문(온보딩)으로, 로그인은 캘린더로.
+      router.replace(mode === "signup" ? "/onboarding" : "/calendar");
     } catch (e) {
-      setErr(humanizeError(e));
+      // 없는 계정으로 로그인 시도 → 회원가입 모드로 안내.
+      if (e instanceof ApiError && e.code === "NEED_SIGNUP") {
+        setMode("signup");
+        setErr("등록되지 않은 계정입니다. 회원가입으로 전환했습니다.");
+      } else if (e instanceof ApiError && e.code === "ALREADY_EXISTS") {
+        setMode("login");
+        setErr("이미 가입된 계정입니다. 로그인으로 전환했습니다.");
+      } else {
+        setErr(humanizeError(e));
+      }
     } finally {
       setBusy(false);
     }
@@ -124,8 +138,10 @@ export default function LoginPage() {
         )}
 
         {DEV_MODE && (
-          <form onSubmit={handleDevLogin} className="space-y-2 border-t border-border pt-4">
-            <div className="text-xs text-text-2">DEV 로그인</div>
+          <form onSubmit={handleDevAuth} className="space-y-2 border-t border-border pt-4">
+            <div className="text-xs text-text-2">
+              {mode === "signup" ? "DEV 회원가입" : "DEV 로그인"}
+            </div>
             <input
               className="input w-full"
               value={email}
@@ -141,8 +157,24 @@ export default function LoginPage() {
               required
             />
             <button type="submit" disabled={busy} className="btn-primary w-full flex items-center justify-center gap-2">
-              <LogIn className="h-4 w-4" />
-              {busy ? "로그인 중..." : "DEV 로그인"}
+              {mode === "signup" ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+              {busy
+                ? "처리 중..."
+                : mode === "signup"
+                  ? "DEV 회원가입"
+                  : "DEV 로그인"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode((m) => (m === "signup" ? "login" : "signup"));
+                setErr("");
+              }}
+              className="w-full text-xs text-text-2 hover:text-accent transition-colors pt-1"
+            >
+              {mode === "signup"
+                ? "이미 계정이 있나요? 로그인"
+                : "계정이 없나요? 회원가입"}
             </button>
           </form>
         )}

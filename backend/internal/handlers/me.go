@@ -36,6 +36,7 @@ type meResponse struct {
 	PersonaCharacterType string `json:"persona_character_type"`
 	PersonaDefinition    string `json:"persona_definition"`
 	PersonaTokens        int    `json:"persona_tokens"`
+	CharacterSkin        string `json:"character_skin"`
 	EquippedTitle        any    `json:"equipped_title"`
 	Tendency             string `json:"tendency"`
 }
@@ -77,9 +78,40 @@ func (h *MeHandler) Get(c *gin.Context) {
 		PersonaCharacterType: u.PersonaCharacterType,
 		PersonaDefinition:    u.PersonaDefinition,
 		PersonaTokens:        u.PersonaTokens,
+		CharacterSkin:        u.CharacterSkin,
 		EquippedTitle:        equippedJSON,
 		Tendency:             u.Tendency,
 	})
+}
+
+type characterReq struct {
+	Skin string `json:"skin"`
+}
+
+// SetCharacter persists the user's chosen 2D character skin id.
+func (h *MeHandler) SetCharacter(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *characterReq) error {
+		if r.Skin == "" {
+			return errors.New("skin required")
+		}
+		if len(r.Skin) > 40 {
+			return errors.New("skin id too long")
+		}
+		return nil
+	})
+	if !ok {
+		return
+	}
+	if err := h.Users.SetCharacterSkin(c.Request.Context(), uid, req.Skin); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	Respond(c, http.StatusOK, okResponse{OK: true})
 }
 
 type onboardingReq struct {

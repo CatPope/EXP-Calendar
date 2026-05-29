@@ -10,6 +10,7 @@ import (
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type AuthHandler struct {
@@ -77,6 +78,8 @@ func (h *AuthHandler) Google(c *gin.Context) {
 	h.issueTokens(c, u)
 }
 
+// DevLogin authenticates an EXISTING account only. Unknown emails are rejected
+// with NEED_SIGNUP so the client can route to the signup flow.
 func (h *AuthHandler) DevLogin(c *gin.Context) {
 	if !h.Cfg.DevMode {
 		RespondErr(c, http.StatusForbidden, "DEV_MODE_DISABLED", "dev-login disabled")
@@ -89,6 +92,43 @@ func (h *AuthHandler) DevLogin(c *gin.Context) {
 		return nil
 	})
 	if !ok {
+		return
+	}
+	u, err := h.Users.GetByEmail(c.Request.Context(), req.Email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			RespondErr(c, http.StatusNotFound, "NEED_SIGNUP", "등록되지 않은 계정입니다. 회원가입이 필요합니다.")
+			return
+		}
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	_ = h.Users.EnsureMinPoints(c.Request.Context(), u.ID, 999999)
+	_ = h.Users.EnsureMinPersonaTokens(c.Request.Context(), u.ID, 10)
+	h.issueTokens(c, u)
+}
+
+// DevSignup creates a NEW account. Existing emails are rejected with
+// ALREADY_EXISTS so the client can route to the login flow.
+func (h *AuthHandler) DevSignup(c *gin.Context) {
+	if !h.Cfg.DevMode {
+		RespondErr(c, http.StatusForbidden, "DEV_MODE_DISABLED", "dev-signup disabled")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *devLoginReq) error {
+		if r.Email == "" {
+			return errors.New("email required")
+		}
+		return nil
+	})
+	if !ok {
+		return
+	}
+	if _, err := h.Users.GetByEmail(c.Request.Context(), req.Email); err == nil {
+		RespondErr(c, http.StatusConflict, "ALREADY_EXISTS", "이미 가입된 계정입니다. 로그인해 주세요.")
+		return
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
 	dn := req.DisplayName
