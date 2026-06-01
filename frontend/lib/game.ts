@@ -58,3 +58,41 @@ export const CHARACTER_LABEL: Record<string, string> = {
   tsundere: "츤데레",
   knight: "용감한 기사"
 };
+
+// ---------- 칭호/캐릭터 등급(Grade) 표시 — 와이어프레임 정합 (uxui_05·06·08·09) ----------
+// 모든 화면이 동일한 등급 색을 쓰도록 단일 소스로 둔다. 디자인 토큰만 사용(하드코딩 금지).
+//   COMMON → 회색(text-2) · RARE → 시안(success) · EPIC → 퍼플(accent) · LEGENDARY → 골드(gold)
+
+export type GradeKey = "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
+
+/** 와이어프레임 배지 표기(LEGENDARY는 "LEGEND"로 노출). */
+export const GRADE_LABEL: Record<GradeKey, string> = {
+  COMMON: "COMMON",
+  RARE: "RARE",
+  EPIC: "EPIC",
+  LEGENDARY: "LEGEND"
+};
+
+export const GRADE_TEXT: Record<GradeKey, string> = {
+  COMMON: "text-text-2",
+  RARE: "text-success",
+  EPIC: "text-accent",
+  LEGENDARY: "text-gold"
+};
+
+export const GRADE_BORDER: Record<GradeKey, string> = {
+  COMMON: "border-border",
+  RARE: "border-success",
+  EPIC: "border-accent",
+  LEGENDARY: "border-gold"
+};
+
+/** 등급 배지용 합성 클래스 (테두리+글자+살짝 배경틴트). */
+export function gradeBadgeClass(grade: string): string {
+  const g = (grade as GradeKey) in GRADE_TEXT ? (grade as GradeKey) : "COMMON";
+  return `${GRADE_TEXT[g]} ${GRADE_BORDER[g]}`;
+}
+
+export function gradeLabel(grade: string): string {
+  return GRADE_LABEL[(grade as GradeKey)] ?? grade;
+}

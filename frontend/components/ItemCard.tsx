@@ -1,50 +1,54 @@
 "use client";
 
-import { Coins, ShoppingCart } from "lucide-react";
 import type { ShopItem } from "@/lib/types";
+import Spinner from "@/components/common/Spinner";
 
 interface Props {
   item: ShopItem;
-  disabled?: boolean;
+  /** true이면 포인트 부족(구매 비활성 + 가격 강조 제거). */
+  cantAfford?: boolean;
+  /** 구매 진행 중(버튼 스피너). */
+  busy?: boolean;
   onPurchase: () => void;
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  CUSTOMIZE: "커스터마이즈",
-  DEFENSE: "방어",
-  PERSONA: "페르소나"
-};
-
-const CATEGORY_COLOR: Record<string, string> = {
-  CUSTOMIZE: "text-accent border-accent/40",
-  DEFENSE: "text-success border-success/40",
-  PERSONA: "text-gold border-gold/40"
-};
-
-export default function ItemCard({ item, disabled, onPurchase }: Props) {
+export default function ItemCard({ item, cantAfford, busy, onPurchase }: Props) {
   return (
-    <div className="card flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span
-          className={`text-xs px-2 py-0.5 rounded border ${CATEGORY_COLOR[item.category] || ""}`}
-        >
-          {CATEGORY_LABEL[item.category] || item.category}
-        </span>
-        <span className="flex items-center gap-1 text-gold font-mono text-sm">
-          <Coins className="h-4 w-4" /> {item.price}P
+    <div className="card flex flex-col gap-3">
+      {/* 아이템 아트 플레이스홀더 (와이어프레임의 점선 박스) */}
+      <div className="flex h-28 items-center justify-center rounded-md border border-dashed border-border bg-surface-2">
+        <span className="rounded border border-border bg-base px-2 py-0.5 text-[11px] text-text-2">
+          item art
         </span>
       </div>
-      <div className="font-semibold text-text-1">{item.name}</div>
-      <div className="text-xs text-text-2 flex-1">{item.description}</div>
-      <div className="text-[11px] text-success">{item.effect}</div>
-      <button
-        onClick={onPurchase}
-        disabled={disabled}
-        className="btn-primary flex items-center justify-center gap-1 disabled:opacity-50"
-      >
-        <ShoppingCart className="h-4 w-4" />
-        구매
-      </button>
+
+      {/* 이름 + 설명 */}
+      <div className="text-center">
+        <h3 className="font-semibold text-text-1">{item.name}</h3>
+        <p className="mt-0.5 text-xs text-text-2">{item.description}</p>
+        {item.effect && (
+          <p className="mt-1 text-[11px] text-success">{item.effect}</p>
+        )}
+      </div>
+
+      {/* 푸터: 가격 + 구매 버튼 */}
+      <div className="mt-auto flex items-center justify-between border-t border-border pt-3">
+        <span
+          className={`inline-flex items-center gap-1 font-mono text-sm ${
+            cantAfford ? "text-text-2" : "text-gold"
+          }`}
+        >
+          <span aria-hidden>◎</span>
+          {item.price} P
+        </span>
+        <button
+          onClick={onPurchase}
+          disabled={cantAfford || busy}
+          className="btn-primary px-4 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy ? <Spinner size={14} /> : cantAfford ? "포인트 부족" : "구매"}
+        </button>
+      </div>
     </div>
   );
 }

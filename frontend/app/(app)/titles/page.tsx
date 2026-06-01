@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Crown, Eye, EyeOff, Star } from "lucide-react";
+import { Crown } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
-import TitleBadge from "@/components/TitleBadge";
 import CharacterAvatar from "@/components/CharacterAvatar";
+import TitleCard, { type TitleCardModel } from "@/components/titles/TitleCard";
+import PenaltyBanner from "@/components/titles/PenaltyBanner";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type { UserTitle } from "@/lib/types";
 import { SKINS, unlockedSkins, skinFromLevel, type SkinId } from "@/lib/character";
 
-const GRADE_LABEL: Record<string, string> = {
+const SKIN_GRADE_LABEL: Record<string, string> = {
   COMMON: "일반",
   RARE: "레어",
   EPIC: "에픽",
-  LEGENDARY: "레전더리",
+  LEGENDARY: "레전더리"
 };
 
 export default function TitlesPage() {
@@ -30,9 +31,16 @@ export default function TitlesPage() {
     () => Api.myTitles(),
     []
   );
-  // Local optimistic mirror so toggles don't trigger a re-fetch / loading flash.
+  // 토글 시 재-fetch/로딩 깜빡임을 막기 위한 낙관적 로컬 미러.
   const [overrides, setOverrides] = useState<UserTitle[] | null>(null);
   const titles = overrides ?? data ?? [];
+
+  // 카운터 — 획득/장착/전시 수.
+  const ownedCount = titles.length;
+  const totalCount = ownedCount; // 카탈로그 미제공 → 보유 수로 N/N 표기
+  const equippedCount = titles.filter((t) => t.is_equipped).length;
+  const displayedCount = titles.filter((t) => t.is_displayed).length;
+  const penaltyTitle = titles.find((t) => t.is_equipped && t.negative_modifier);
 
   // 캐릭터 디자인: 보유 칭호 등급으로 해금, 선택은 서버(users.character_skin)에 저장.
   const user = useAppStore((s) => s.user);
@@ -46,7 +54,6 @@ export default function TitlesPage() {
     const stored = (user?.character_skin as SkinId) || null;
     setSkin(stored ?? skinFromLevel(level).id);
   }, [level, user?.character_skin]);
-  // 선택한 스킨이 아직 해금 안 됐으면 안전하게 레벨 기본값으로.
   const activeSkin: SkinId =
     skin && unlockedIds.has(skin) ? skin : skinFromLevel(level).id;
 
@@ -73,6 +80,7 @@ export default function TitlesPage() {
       applyLocal((arr) =>
         arr.map((x) => ({
           ...x,
+          // 단일 선택 강제: 대상은 토글, 나머지는 모두 해제.
           is_equipped: x.id === t.id ? !t.is_equipped : false
         }))
       );
@@ -106,22 +114,80 @@ export default function TitlesPage() {
     }
   }
 
+  function toModel(t: UserTitle): TitleCardModel {
+    return {
+      owned: t,
+      grade: t.title.grade,
+      name: t.title.name,
+      conditionText: `획득: ${new Date(t.acquired_at).toLocaleDateString("ko-KR")}`
+    };
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Crown className="h-5 w-5 text-gold" />
-        <h1 className="text-lg font-semibold">내 칭호</h1>
-        <span className="text-xs text-text-2 ml-auto">
-          총 {titles.length}개 · 장착은 1개만 가능
-        </span>
+      {/* 헤더 + 카운터 */}
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <Crown className="h-5 w-5 text-gold" /> 칭호 컬렉션
+          </h1>
+          <p className="text-xs text-text-2">
+            획득 {ownedCount} / 전체 {totalCount} · 장착·전시용 분리 선택
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded border border-accent px-2 py-0.5 text-xs text-accent">
+            장착 ×{equippedCount}
+          </span>
+          <span className="inline-flex items-center rounded border border-success px-2 py-0.5 text-xs text-success">
+            전시 ◆ {displayedCount}
+          </span>
+        </div>
       </div>
 
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
+      {loading ? (
+        <Spinner block label="칭호 불러오는 중..." />
+      ) : titles.length === 0 ? (
+        <div className="card text-center text-sm text-text-2">
+          아직 보유한 칭호가 없습니다. 일정을 완료하고 레벨을 올려 칭호를 획득하세요!
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {titles.map((ut) => (
+            <TitleCard
+              key={ut.id}
+              model={toModel(ut)}
+              busy={busyId === ut.id}
+              onEquip={() => toggleEquip(ut)}
+              onDisplay={() => toggleDisplay(ut)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* PENALTY 배너 — 장착 칭호에 부정 수식어가 있을 때만 */}
+      {penaltyTitle?.negative_modifier && (
+        <PenaltyBanner
+          modifier={penaltyTitle.negative_modifier}
+          defenseCount={0}
+          onRecover={() =>
+            pushToast(
+              "info",
+              "정상 일정을 완료하면 강등이 자동으로 복구됩니다. (시스템 초기화 불가)"
+            )
+          }
+          onUseDefense={() =>
+            pushToast("info", "보유한 등급 하락 방어권이 없습니다. 상점에서 구매하세요.")
+          }
+        />
+      )}
+
       {/* 캐릭터 디자인: 보유 칭호 등급으로 해금 */}
-      <div className="card flex flex-col sm:flex-row items-center gap-4">
+      <div className="card flex flex-col items-center gap-4 sm:flex-row">
         <CharacterAvatar level={level} skin={activeSkin} size={180} withFrame />
-        <div className="flex-1 space-y-2 w-full">
+        <div className="w-full flex-1 space-y-2">
           <h2 className="font-semibold">내 캐릭터 디자인</h2>
           <p className="text-xs text-text-2">
             보유한 칭호 등급에 따라 캐릭터 디자인이 해금됩니다.
@@ -129,11 +195,13 @@ export default function TitlesPage() {
           <select
             value={activeSkin}
             onChange={(e) => selectSkin(e.target.value as SkinId)}
-            className="w-full sm:max-w-xs rounded-md bg-surface-2 border border-border px-3 py-2 text-sm text-text-1 focus:outline-none focus:border-accent"
+            className="w-full rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-1 focus:border-accent focus:outline-none sm:max-w-xs"
           >
             {SKINS.map((s) => {
               const locked = !unlockedIds.has(s.id);
-              const need = s.unlockGrade ? `${GRADE_LABEL[s.unlockGrade]} 칭호 필요` : "";
+              const need = s.unlockGrade
+                ? `${SKIN_GRADE_LABEL[s.unlockGrade]} 칭호 필요`
+                : "";
               return (
                 <option key={s.id} value={s.id} disabled={locked}>
                   {s.label}
@@ -147,71 +215,6 @@ export default function TitlesPage() {
           </p>
         </div>
       </div>
-
-      {loading ? (
-        <Spinner block label="칭호 불러오는 중..." />
-      ) : titles.length === 0 ? (
-        <div className="card text-center text-text-2 text-sm">
-          아직 보유한 칭호가 없습니다. 일정을 완료하고 레벨을 올려 칭호를 획득하세요!
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {titles.map((ut) => (
-            <div
-              key={ut.id}
-              className={`card flex flex-col gap-2 ${
-                ut.is_equipped ? "border-accent/60 shadow-lg shadow-accent/10" : ""
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <TitleBadge title={ut.title} modifier={ut.negative_modifier} />
-                {ut.is_equipped && (
-                  <span className="text-[10px] text-accent inline-flex items-center gap-0.5">
-                    <Star className="h-3 w-3" /> 장착중
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-text-2">
-                획득: {new Date(ut.acquired_at).toLocaleDateString("ko-KR")}
-              </p>
-              {ut.negative_modifier && (
-                <p className="text-xs text-danger">
-                  페널티: {ut.negative_modifier}
-                </p>
-              )}
-              <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <button
-                  className={`flex-1 text-xs rounded-md py-1.5 ${
-                    ut.is_equipped
-                      ? "bg-accent text-white"
-                      : "bg-surface-2 text-text-1 hover:bg-border"
-                  } disabled:opacity-50`}
-                  disabled={busyId === ut.id}
-                  onClick={() => toggleEquip(ut)}
-                >
-                  {ut.is_equipped ? "장착 해제" : "장착하기"}
-                </button>
-                <button
-                  className="text-xs rounded-md py-1.5 px-2 bg-surface-2 hover:bg-border inline-flex items-center gap-1 disabled:opacity-50"
-                  disabled={busyId === ut.id}
-                  onClick={() => toggleDisplay(ut)}
-                  title="쇼케이스 전시 토글"
-                >
-                  {ut.is_displayed ? (
-                    <>
-                      <Eye className="h-3 w-3" /> 전시중
-                    </>
-                  ) : (
-                    <>
-                      <EyeOff className="h-3 w-3" /> 미전시
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

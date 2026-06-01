@@ -1,69 +1,84 @@
 "use client";
 
-import Link from "next/link";
+import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { Api } from "@/lib/api";
-import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type { ShowcaseSummary } from "@/lib/types";
-import TitleBadge from "@/components/TitleBadge";
-import CharacterAvatar from "@/components/CharacterAvatar";
+import ShowcaseCard from "@/components/showcase/ShowcaseCard";
+import PrivacyNotice from "@/components/showcase/PrivacyNotice";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
-import { ChevronRight, User as UserIcon } from "lucide-react";
-import type { SkinId } from "@/lib/character";
 
 export default function ShowcaseListPage() {
-  const user = useAppStore((s) => s.user);
   const { data, loading, error, dismissError } = useAsyncData<ShowcaseSummary[]>(
     () => Api.listShowcase(),
     []
   );
-  const list = data ?? [];
+  const [search, setSearch] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const list = data ?? [];
+    const q = query.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((u) => u.display_name.toLowerCase().includes(q));
+  }, [data, query]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-bold">다른 사용자 쇼케이스</h1>
-        {user && (
-          <Link
-            href={`/showcase/${user.id}`}
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent/15 text-accent border border-accent/40 px-3 py-1.5 text-sm hover:bg-accent/25 transition-colors"
-          >
-            <UserIcon className="h-4 w-4" />내 쇼케이스
-          </Link>
-        )}
+      {/* 헤더 */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">쇼케이스</h1>
+          <p className="mt-1 text-sm text-text-2">
+            다른 유저의 공개 프로필 · 캐릭터·칭호·잔디·등급만 열람 (상세 일정/실패율 비공개)
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSearch((s) => !s)}
+          className="btn-ghost flex items-center gap-1 text-sm"
+          aria-pressed={search}
+        >
+          유저 검색 <Search className="h-4 w-4" />
+        </button>
       </div>
+
+      {search && (
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="유저 이름으로 검색"
+          className="input w-full sm:max-w-xs"
+          autoFocus
+        />
+      )}
+
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
+
+      {/* 서브 라인 */}
+      <p className="text-xs text-text-2">
+        친구 · 추천 유저 {(data ?? []).length}명 · 클릭하여 공개 프로필 열람
+      </p>
+
       {loading ? (
         <Loading />
-      ) : list.length === 0 ? (
-        <div className="text-text-2 text-sm">표시할 사용자가 없습니다.</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-sm text-text-2">
+          {query ? "검색 결과가 없습니다." : "표시할 사용자가 없습니다."}
+        </div>
       ) : (
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((u) => (
-            <Link
-              key={u.user_id}
-              href={`/showcase/${u.user_id}`}
-              className="card hover:border-accent transition-colors flex items-center gap-3"
-            >
-              <CharacterAvatar
-                level={u.level}
-                skin={(u.character_skin as SkinId) || undefined}
-                size={48}
-                animated={false}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold truncate">{u.display_name}</div>
-                <div className="text-xs text-text-2">Lv. {u.level}</div>
-                <div className="mt-2">
-                  <TitleBadge title={u.equipped_title} />
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-text-2 shrink-0" />
-            </Link>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((u) => (
+            <ShowcaseCard key={u.user_id} user={u} />
           ))}
         </div>
       )}
+
+      {/* 🔒 비공개 항목 안내 */}
+      <PrivacyNotice />
     </div>
   );
 }

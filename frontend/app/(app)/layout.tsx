@@ -11,6 +11,9 @@ import {
   Users,
   LogOut,
   Settings,
+  Target,
+  Wand2,
+  BarChart3,
   X
 } from "lucide-react";
 import { Api, humanizeError } from "@/lib/api";
@@ -22,11 +25,14 @@ import SettingsModal from "@/components/SettingsModal";
 import Spinner from "@/components/common/Spinner";
 
 const NAV = [
-  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
-  { href: "/shop", label: "Shop", icon: ShoppingBag },
-  { href: "/titles", label: "Titles", icon: Crown },
-  { href: "/persona", label: "Persona", icon: Sparkles },
-  { href: "/showcase", label: "Showcase", icon: Users }
+  { href: "/calendar", label: "캘린더", icon: CalendarIcon },
+  { href: "/quests", label: "일일 퀘스트", icon: Target },
+  { href: "/titles", label: "칭호", icon: Crown },
+  { href: "/summon", label: "소환", icon: Wand2 },
+  { href: "/shop", label: "상점", icon: ShoppingBag },
+  { href: "/stats", label: "통계·등급", icon: BarChart3 },
+  { href: "/showcase", label: "쇼케이스", icon: Users },
+  { href: "/persona", label: "페르소나", icon: Sparkles }
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -141,16 +147,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="p-3 border-t border-border space-y-1">
-          <button
-            onClick={() => {
-              setSettingsOpen(true);
-              setSidebarOpen(false);
-            }}
+          <Link
+            href="/settings"
+            onClick={() => setSidebarOpen(false)}
             className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-surface-2 hover:text-text-1"
           >
             <Settings className="h-4 w-4" />
             설정
-          </button>
+          </Link>
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-danger/10 hover:text-danger"

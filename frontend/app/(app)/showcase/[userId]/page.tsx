@@ -12,7 +12,9 @@ import GrassGraph from "@/components/GrassGraph";
 import CharacterAvatar from "@/components/CharacterAvatar";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
-import type { SkinId } from "@/lib/character";
+import PrivacyNotice from "@/components/showcase/PrivacyNotice";
+import { gradeBadgeClass, gradeLabel } from "@/lib/game";
+import { skinById, type SkinId } from "@/lib/character";
 
 export default function ShowcaseDetailPage() {
   const params = useParams<{ userId: string }>();
@@ -54,21 +56,37 @@ export default function ShowcaseDetailPage() {
       ) : !detail ? (
         <div className="text-text-2">사용자를 찾을 수 없습니다.</div>
       ) : (
+        (() => {
+          const companion = detail.character_skin
+            ? skinById(detail.character_skin as SkinId).label
+            : null;
+          return (
         <>
-          {/* 프로필 카드: 정보만 */}
+          {/* 프로필 카드: 공개 정보만 */}
           <div className="card space-y-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-accent/20 border border-accent/50 flex items-center justify-center font-bold text-accent text-lg">
-                  {detail.level}
-                </div>
+                <span className="inline-flex items-center rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs font-semibold text-text-2">
+                  Lv. {detail.level}
+                </span>
                 <div>
                   <h1 className="text-xl font-bold">{detail.display_name}</h1>
-                  <div className="text-sm text-text-2">
-                    Lv. {detail.level} · 등급 {detail.rating_grade}
-                  </div>
+                  {companion && (
+                    <div className="text-sm text-text-2">동반자: {companion}</div>
+                  )}
                 </div>
               </div>
+              {detail.rating_grade && (
+                <span
+                  className={`inline-flex items-center rounded-md border bg-surface-2/40 px-2 py-0.5 text-xs font-semibold ${gradeBadgeClass(
+                    detail.rating_grade
+                  )}`}
+                >
+                  등급 {gradeLabel(detail.rating_grade)}
+                </span>
+              )}
+            </div>
+            <div className="pt-1">
               <TitleBadge title={detail.equipped_title} />
             </div>
             {detail.displayed_titles?.length > 0 && (
@@ -120,7 +138,12 @@ export default function ShowcaseDetailPage() {
               </div>
             )}
           </div>
+
+          {/* 🔒 비공개 항목 안내 */}
+          <PrivacyNotice />
         </>
+          );
+        })()
       )}
     </div>
   );

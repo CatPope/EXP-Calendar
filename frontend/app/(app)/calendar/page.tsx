@@ -6,7 +6,6 @@ import MonthGrid from "@/components/calendar/MonthGrid";
 import WeekGrid from "@/components/calendar/WeekGrid";
 import DayList from "@/components/calendar/DayList";
 import ScheduleModal from "@/components/calendar/ScheduleModal";
-import Button from "@/components/common/Button";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import { Api, humanizeError } from "@/lib/api";
@@ -37,6 +36,7 @@ export default function CalendarPage() {
 
   const pushToast = useAppStore((s) => s.pushToast);
   const showReward = useAppStore((s) => s.showReward);
+  const user = useAppStore((s) => s.user);
 
   const range = useMemo(() => {
     if (view === "month") {
@@ -49,7 +49,8 @@ export default function CalendarPage() {
       const start = addDays(cursor, -cursor.getDay());
       return { from: toYMD(start), to: toYMD(addDays(start, 6)) };
     }
-    return { from: toYMD(cursor), to: toYMD(cursor) };
+    // day view: fetch today + 30 days ahead so UPCOMING (uxui_03) has data
+    return { from: toYMD(cursor), to: toYMD(addDays(cursor, 30)) };
   }, [view, cursor]);
 
   const {
@@ -141,72 +142,69 @@ export default function CalendarPage() {
     }
   };
 
-  const header =
-    view === "month"
-      ? formatMonthHeader(cursor)
-      : view === "week"
-      ? `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 — ${
-          Math.floor((cursor.getDate() - 1) / 7) + 1
-        }주차`
-      : `${cursor.getFullYear()}.${String(cursor.getMonth() + 1).padStart(2, "0")}.${String(
-          cursor.getDate()
-        ).padStart(2, "0")}`;
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1">
+      {/* 헤더 — uxui_01/02/03: 큰 월 타이틀 + 부제 / 우측 뷰 토글 + 일정 추가 */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-text-1">
+            {formatMonthHeader(cursor)}
+          </h1>
+          <p className="mt-0.5 text-sm text-text-2">
+            오늘 일정을 완료하고 EXP를 획득하세요 · Google Calendar 연동
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
           <button
             onClick={() => shift(-1)}
-            className="btn-ghost"
+            className="btn-ghost px-2 py-1.5"
             aria-label="이전"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={() => setCursor(new Date())}
-            className="btn-ghost text-xs"
+            className="btn-ghost px-2 py-1.5 text-xs"
           >
             오늘
           </button>
           <button
             onClick={() => shift(1)}
-            className="btn-ghost"
+            className="btn-ghost px-2 py-1.5"
             aria-label="다음"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
-        </div>
-        <h2 className="text-lg font-semibold flex-1">{header}</h2>
 
-        <div className="flex items-center gap-1 bg-surface-2 rounded-md p-1">
-          {(["month", "week", "day"] as View[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`text-xs px-2 py-1 rounded ${
-                view === v
-                  ? "bg-accent text-white"
-                  : "text-text-2 hover:text-text-1"
-              }`}
-            >
-              {v === "month" ? "월" : v === "week" ? "주" : "일"}
-            </button>
-          ))}
-        </div>
+          {/* 월/주/일 세그먼트 토글 */}
+          <div className="flex items-center gap-1 rounded-md bg-surface-2 p-1">
+            {(["month", "week", "day"] as View[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`rounded px-2.5 py-1 text-xs font-medium ${
+                  view === v
+                    ? "bg-accent text-white"
+                    : "text-text-2 hover:text-text-1"
+                }`}
+              >
+                {v === "month" ? "월" : v === "week" ? "주" : "일"}
+              </button>
+            ))}
+          </div>
 
-        <Button
-          variant="primary"
-          size="sm"
-          leading={<Plus className="h-4 w-4" />}
-          onClick={() => {
-            setEditing(null);
-            setPrefillYmd(toYMD(cursor));
-            setModalOpen(true);
-          }}
-        >
-          새 일정
-        </Button>
+          <button
+            className="btn-primary flex items-center gap-1.5"
+            onClick={() => {
+              setEditing(null);
+              setPrefillYmd(toYMD(cursor));
+              setModalOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" /> 일정 추가
+          </button>
+        </div>
       </div>
 
       {err && <ErrorBanner message={err} onDismiss={dismissError} />}
@@ -235,6 +233,7 @@ export default function CalendarPage() {
         <DayList
           cursor={cursor}
           schedules={schedules}
+          user={user}
           onCompleteSchedule={onCompleteSchedule}
           onEditSchedule={onEditSchedule}
           onAdd={(ymd) => {

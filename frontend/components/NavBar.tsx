@@ -2,16 +2,32 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Calendar, ShoppingBag, Users, Sparkles, LogOut } from "lucide-react";
+import {
+  Calendar,
+  ShoppingBag,
+  Users,
+  Sparkles,
+  Crown,
+  Target,
+  Wand2,
+  BarChart3,
+  Settings,
+  LogOut
+} from "lucide-react";
 import { Api } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
 
 const ITEMS = [
   { href: "/calendar", label: "캘린더", icon: Calendar },
+  { href: "/quests", label: "일일 퀘스트", icon: Target },
+  { href: "/titles", label: "칭호", icon: Crown },
+  { href: "/summon", label: "소환", icon: Wand2 },
   { href: "/shop", label: "상점", icon: ShoppingBag },
+  { href: "/stats", label: "통계·등급", icon: BarChart3 },
   { href: "/showcase", label: "쇼케이스", icon: Users },
-  { href: "/persona", label: "페르소나", icon: Sparkles }
+  { href: "/persona", label: "페르소나", icon: Sparkles },
+  { href: "/settings", label: "설정", icon: Settings }
 ];
 
 export default function NavBar() {

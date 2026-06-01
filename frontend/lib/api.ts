@@ -20,7 +20,9 @@ import type {
   UserTitle,
   Purchase,
   CharacterType,
-  Tendency
+  Tendency,
+  StatsSeriesPoint,
+  StatsPeriod
 } from "./types";
 
 export const BASE_URL =
@@ -187,11 +189,6 @@ export const Api = {
       method: "PATCH",
       body: JSON.stringify({ skin })
     }),
-  updateProfile: (display_name: string) =>
-    apiFetch<{ ok: true }>("/api/me/profile", {
-      method: "PATCH",
-      body: JSON.stringify({ display_name })
-    }),
 
   // schedules
   listSchedules: (from: string, to: string) =>
@@ -281,5 +278,7 @@ export const Api = {
 
   // stats
   grass: (days = 365) =>
-    apiFetch<Record<string, number>>(`/api/stats/grass?days=${days}`)
+    apiFetch<Record<string, number>>(`/api/stats/grass?days=${days}`),
+  statsSeries: (period: StatsPeriod = "week") =>
+    apiFetch<StatsSeriesPoint[]>(`/api/stats/series?period=${period}`)
 };

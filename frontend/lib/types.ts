@@ -118,3 +118,39 @@ export interface AuthResponse {
   refresh_token: string;
   user: User;
 }
+
+// ---------- Stats (uxui_08–10) ----------
+
+// GET /api/stats/series → rows of {date, success, fail}
+export interface StatsSeriesPoint {
+  date: string;
+  success: number;
+  fail: number;
+}
+
+export type StatsPeriod = "week" | "month" | "year";
+
+// ---------- Summon / Gacha (uxui_06–07) ----------
+// 프론트 전용(가챠 백엔드 엔드포인트 부재) — 카탈로그/확률은 lib/summon.ts에서 제공.
+
+export interface SummonCharacter {
+  id: string;
+  name: string;
+  grade: Grade;
+  /** 캐릭터 스킨 식별자 (lib/character.ts 와 연결). */
+  appearance: string;
+  description: string;
+  owned: boolean;
+  equipped: boolean;
+}
+
+export interface GachaRate {
+  grade: Grade;
+  /** 백분율 (예: 3 = 3%). */
+  percent: number;
+}
+
+export interface SummonOutcome {
+  character: SummonCharacter;
+  isNew: boolean;
+}

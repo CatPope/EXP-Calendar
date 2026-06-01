@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { CalendarDays } from "lucide-react";
 import type { Schedule } from "@/lib/types";
 import {
   isSameDay,
@@ -31,12 +32,10 @@ export default function MonthGrid({
   const cells = useMemo(() => monthGrid(cursor), [cursor]);
   const today = new Date();
 
-  // group schedules by YMD
   const byDate = useMemo(() => {
     const m: Record<string, Schedule[]> = {};
     for (const s of schedules) {
-      const d = new Date(s.due_date);
-      const key = toYMD(d);
+      const key = toYMD(new Date(s.due_date));
       (m[key] = m[key] || []).push(s);
     }
     return m;
@@ -46,12 +45,10 @@ export default function MonthGrid({
     e.dataTransfer.setData("text/plain", s.id);
     e.dataTransfer.effectAllowed = "move";
   }
-
   function onDragOver(e: React.DragEvent) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   }
-
   function onDrop(ymd: string, e: React.DragEvent) {
     e.preventDefault();
     const id = e.dataTransfer.getData("text/plain");
@@ -60,7 +57,16 @@ export default function MonthGrid({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="grid grid-cols-7 border-b border-border bg-surface-2/50 text-xs">
+      {/* 섹션 헤더 — uxui_01: MONTH 월간 뷰 · 드래그하여 일정 이동 */}
+      <div className="flex items-center justify-between border-b border-border bg-surface-2/50 px-3 py-2">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-text-1">
+          <CalendarDays className="h-3.5 w-3.5 text-accent" />
+          <span>MONTH 월간 뷰</span>
+        </div>
+        <span className="text-[11px] text-text-2">드래그하여 일정 이동</span>
+      </div>
+
+      <div className="grid grid-cols-7 border-b border-border text-xs">
         {[0, 1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
@@ -72,12 +78,14 @@ export default function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 grid-rows-6 min-h-[480px]">
+
+      <div className="grid min-h-[480px] grid-cols-7 grid-rows-6">
         {cells.map((d) => {
           const key = toYMD(d);
           const list = byDate[key] || [];
           const muted = !isSameMonth(d, cursor);
           const isToday = isSameDay(d, today);
+          const dow = d.getDay();
           return (
             <button
               type="button"
@@ -85,21 +93,23 @@ export default function MonthGrid({
               onClick={() => onSelectDate(key)}
               onDragOver={onDragOver}
               onDrop={(e) => onDrop(key, e)}
-              className={`text-left border-r border-b border-border last:border-r-0 p-1 md:p-1.5 align-top hover:bg-surface-2/60 transition-colors ${
+              className={`align-top text-left transition-colors last:border-r-0 border-b border-r border-border p-1 hover:bg-surface-2/60 md:p-1.5 ${
                 muted ? "bg-base/50 opacity-60" : ""
               }`}
             >
               <div
-                className={`flex items-center justify-between mb-1 text-[11px] ${
-                  isToday ? "text-accent font-bold" : "text-text-2"
+                className={`mb-1 flex items-center gap-0.5 text-[11px] ${
+                  isToday
+                    ? "font-bold text-accent"
+                    : dow === 0
+                    ? "text-danger"
+                    : dow === 6
+                    ? "text-accent"
+                    : "text-text-2"
                 }`}
               >
+                {isToday && <span aria-hidden>&#9654;</span>}
                 <span>{d.getDate()}</span>
-                {isToday && (
-                  <span className="text-[9px] rounded bg-accent/20 px-1 text-accent">
-                    오늘
-                  </span>
-                )}
               </div>
               <div className="space-y-1">
                 {list.slice(0, 3).map((s) => (
