@@ -6,11 +6,12 @@
 
 ## A. UXUI 정합 — 프론트 전면 수정
 
-- [x] 와이어프레임과 SRS v1.3에 맞춰 `frontend/app/(app)/` 전 화면 점검·수정 — 캘린더(월/주/일)·칭호·상점·쇼케이스·페르소나 정렬 (uxui_01~05,08,11~14)
-- [x] SRS v1.3에 있고 현재 없는 화면 신설 (퀘스트 / 소환·가챠 / 통계 / 통합 설정) — `/quests` `/summon` `/stats` `/settings` 신설 (uxui_04,06~07,09~10,15~17). 소환은 백엔드 가챠 엔드포인트 부재로 프론트 mock(`lib/summon.ts` + localStorage)
-- [x] `components/NavBar.tsx` 네비게이션을 신설 화면까지 포함하도록 갱신 — `(app)/layout.tsx` 사이드바 NAV도 동일 갱신, 설정은 모달→페이지 링크로 전환
-- [x] 디자인 토큰(`tailwind.config.ts` + `app/globals.css`)만 사용 — 하드코딩 색상 금지. 등급 색은 `lib/game.ts`의 `GRADE_*`/`gradeBadgeClass` 단일 소스로 통일. 예외 1건: 설정 화면 컬러테마 미리보기 스와치 점만 인라인 hex(팔레트 리터럴 프리뷰)
-- [x] 빌드 검증 완료 — `node:20` 컨테이너에서 전체 의존성 설치 후 `npx tsc --noEmit`(에러 0) + `npx next lint --max-warnings=0`(경고/에러 0) 통과. (스택 실제값: Next 15.5 + React 19 + TS 5.6)
+> **⚠️ 전면 재설계 필요**: 기존 작업분은 폐기하고 와이어프레임(`docs/for_ai/planning/_uxui_pages/uxui_01~17.png`)과 SRS v1.3을 기준으로 처음부터 다시 설계한다. 이전 브랜치에서 일부 진행 기록(`[x]`)이 있었더라도 본 시점에서는 모두 미체크 상태로 간주하고 재작업한다.
+
+- [ ] 와이어프레임과 SRS v1.3에 맞춰 `frontend/app/(app)/` 전 화면 점검·수정
+- [ ] SRS v1.3에 있고 현재 없는 화면 신설 (퀘스트 / 소환·가챠 / 통계 / 통합 설정)
+- [ ] `components/NavBar.tsx` 네비게이션을 신설 화면까지 포함하도록 갱신
+- [ ] 디자인 토큰(`tailwind.config.ts` + `app/globals.css`)만 사용 — 하드코딩 색상 금지
 
 ## B. SuperRetroWorld 캐릭터 에셋 설치
 
