@@ -24,6 +24,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **요구사항(권위 문서)**: [docs/for_ai/planning/requirements_ieee830.md](docs/for_ai/planning/requirements_ieee830.md) — SRS v1.2 (IEEE 830)
 - **API 계약 & 게임 규칙(SSoT)**: [docs/for_ai/spec/api_and_rules.md](docs/for_ai/spec/api_and_rules.md) — 모든 엔드포인트 스키마, 응답 envelope `{data}`/`{error}`, EXP/Points 공식, 일일 한도, 칭호 부여 조건, LLM 프롬프트 템플릿. **backend/frontend 변경 시 이 문서와 코드를 동시 갱신**한다.
 
+## 작업 진입 절차 (TODO 우선)
+
+작업을 시작하기 전에 반드시 루트의 [`TODO.md`](TODO.md)를 먼저 읽는다. TODO.md는 현재 처리해야 할 항목 목록이며 다음을 의무로 한다:
+
+- **TODO.md의 미체크 항목을 우선 처리한다.** 사용자가 다른 작업을 명시적으로 지시한 경우만 예외.
+- **세부 구현은 담당자가 직접 판단**하되, 결정 사항·진행 상태·막힘 사유는 본 파일에 기록한다 (진행 중 `[~]`, 완료 `[x]`, 막힘 `[!]` + 한 줄 사유).
+- TODO와 어긋나는 결정이 필요해지면 **본 파일을 함께 수정**하고 그 사유를 PR 본문/커밋 메시지에 남긴다.
+- PR 본문에는 처리한 TODO 항목 체크박스 기준으로 보고한다.
+
 ## 자주 쓰는 명령
 
 ```powershell
