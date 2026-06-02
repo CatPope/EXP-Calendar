@@ -113,9 +113,10 @@ func (h *ShowcaseHandler) Get(c *gin.Context) {
 		grass = map[string]int{}
 	}
 
-	// Side effect: visiting OTHER user's showcase auto-completes the viewer's VISIT_SHOWCASE quest.
+	// Side effect: visiting OTHER user's showcase auto-completes + awards the
+	// viewer's VISIT_SHOWCASE quest.
 	if viewerID != target {
-		_, _, _ = h.Quests.MarkCompleted(c.Request.Context(), viewerID, kstToday(), "VISIT_SHOWCASE")
+		_, _, _, _ = AwardQuestAuto(c.Request.Context(), h.Quests, h.Users, viewerID, kstToday(), "VISIT_SHOWCASE")
 	}
 
 	Respond(c, http.StatusOK, showcaseProfileResponse{

@@ -20,6 +20,7 @@ import { Api, humanizeError } from "@/lib/api";
 import { clearTokens, getStoredAccessToken } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
 import { loadSettings } from "@/lib/settings";
+import { applyPalette, getStoredPalette } from "@/lib/palette";
 import HUD from "@/components/HUD";
 import SettingsModal from "@/components/SettingsModal";
 import Spinner from "@/components/common/Spinner";
@@ -53,6 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // 저장된 테마/폰트 설정을 마운트 시 적용.
   useEffect(() => {
     setSettings(loadSettings());
+    applyPalette(getStoredPalette());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

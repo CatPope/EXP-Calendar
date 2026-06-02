@@ -97,10 +97,10 @@ func (h *SchedulesHandler) Create(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	// Auto-complete ADD_PLAN quest if user added >=2 plans today.
+	// Auto-complete + award ADD_PLAN quest if user added >=2 plans today.
 	today := kstToday()
 	if n, _ := h.Schedules.CountAddedOn(c.Request.Context(), uid, today); n >= 2 {
-		_, _, _ = h.Quests.MarkCompleted(c.Request.Context(), uid, today, "ADD_PLAN")
+		_, _, _, _ = AwardQuestAuto(c.Request.Context(), h.Quests, h.Users, uid, today, "ADD_PLAN")
 	}
 	Respond(c, http.StatusCreated, s)
 }
@@ -248,12 +248,6 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	// 6) COMPLETE_PLAN quest auto-complete (any 1 completion today)
-	if err := h.checkQuestProgress(ctx, tx, uid, today); err != nil {
-		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
-		return
-	}
-
 	// 7) penalty recovery (FR-TITLE-04): a normal completion clears the penalty
 	//    modifier on the equipped title.
 	if _, err := h.Titles.ClearNegativeModifierTx(ctx, tx, uid); err != nil {
@@ -266,7 +260,11 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	// 8) stat-based title evaluation (SRS v1.3 Appendix C). Runs post-commit so the
+	// 8) COMPLETE_PLAN quest auto-complete + award (post-commit so it sees this
+	//    completion and the daily-cap state is consistent).
+	_, _, _, _ = AwardQuestAuto(ctx, h.Quests, h.Users, uid, today, "COMPLETE_PLAN")
+
+	// 9) stat-based title evaluation (SRS v1.3 Appendix C). Runs post-commit so the
 	//    aggregate queries see this completion. Grants any newly satisfied titles.
 	newTitles := h.evaluateTitles(ctx, uid, today)
 
@@ -436,16 +434,6 @@ func (h *SchedulesHandler) evaluateTitles(ctx context.Context, uid uuid.UUID, to
 		}
 	}
 	return out
-}
-
-// checkQuestProgress auto-completes COMPLETE_PLAN for the day (single completion
-// is enough — see quest spec). Idempotent; safe to call multiple times.
-func (h *SchedulesHandler) checkQuestProgress(
-	ctx context.Context, tx pgx.Tx,
-	uid uuid.UUID, day time.Time,
-) error {
-	_, _, err := h.Quests.MarkCompletedTx(ctx, tx, uid, day, "COMPLETE_PLAN")
-	return err
 }
 
 func levelOrNil(oldLvl, newLvl int) any {

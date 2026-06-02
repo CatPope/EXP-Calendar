@@ -18,6 +18,7 @@ import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { clearTokens } from "@/lib/auth";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
+import { PALETTES, applyPalette, isPalette, type Palette as PaletteId } from "@/lib/palette";
 import type { Settings } from "@/lib/types";
 
 const TIMEZONES = ["Asia/Seoul", "UTC", "America/New_York", "Asia/Tokyo"];
@@ -106,8 +107,16 @@ export default function SettingsPage() {
   const [confirmReset, setConfirmReset] = useState(false);
 
   useEffect(() => {
-    if (data) setLocal(data);
+    if (data) {
+      setLocal(data);
+      if (isPalette(data.theme)) applyPalette(data.theme);
+    }
   }, [data]);
+
+  function selectTheme(theme: PaletteId) {
+    applyPalette(theme); // 즉시 화면 반영 + localStorage 캐시
+    update({ theme });
+  }
 
   async function update(patch: Partial<Settings>) {
     setLocal((cur) => (cur ? { ...cur, ...patch } : cur));
@@ -425,40 +434,31 @@ export default function SettingsPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button
-                type="button"
-                onClick={() => update({ theme: "cosmic_purple" })}
-                aria-pressed={local.theme === "cosmic_purple"}
-                className={`flex flex-col items-start gap-1 rounded-md border p-3 text-left transition-colors ${
-                  local.theme === "cosmic_purple"
-                    ? "border-accent bg-accent/15"
-                    : "border-border bg-surface-2 hover:border-accent/50"
-                }`}
-              >
-                <span className="text-xs font-medium text-text-1">
-                  코스믹 퍼플
-                </span>
-                <span className="text-[10px] text-text-2">기본</span>
-              </button>
-
-              {[
-                { id: "game_boy", label: "게임보이" },
-                { id: "synthwave", label: "신스웨이브" },
-                { id: "amber_crt", label: "앰버 CRT" },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  disabled
-                  className="flex flex-col items-start gap-1 rounded-md border border-border bg-surface-2 p-3 text-left opacity-50 cursor-not-allowed"
-                >
-                  <span className="text-xs font-medium text-text-1">
-                    {t.label}
-                  </span>
-                  <span className="text-[10px] text-gold">예정(V2)</span>
-                </button>
-              ))}
+              {PALETTES.map((p) => {
+                const active = local.theme === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => selectTheme(p.value)}
+                    aria-pressed={active}
+                    className={`flex flex-col items-start gap-1 rounded-md border p-3 text-left transition-colors ${
+                      active
+                        ? "border-accent bg-accent/15"
+                        : "border-border bg-surface-2 hover:border-accent/50"
+                    }`}
+                  >
+                    <span className="text-xs font-medium text-text-1">
+                      {p.label}
+                    </span>
+                    <span className="text-[10px] text-text-2">{p.hint}</span>
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-[11px] text-text-2">
+              테마는 즉시 적용되며 기기에 저장됩니다.
+            </p>
           </section>
         </>
       )}

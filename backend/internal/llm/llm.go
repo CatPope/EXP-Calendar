@@ -218,18 +218,13 @@ func buildSystemPrompt(definition, characterType, titleStr string) string {
 }
 
 // mockResponse produces deterministic output without a real LLM call.
-//   - definition present → wrap with a clear "[<persona excerpt>] " prefix
-//     so the developer can confirm the definition is being used.
-//   - else: just echo the text (default).
+//   - definition present → restyle the text in a persona voice inferred from the
+//     definition's traits (interjection + speech-style tail). Real transformation
+//     needs GEMINI_API_KEY; this keeps the offline preview readable & in-character.
+//   - else: legacy preset path (tsundere/knight) for tests.
 func mockResponse(definition, characterType, text string) string {
 	if definition != "" {
-		// Use up to 30 chars of the definition as a visible marker.
-		excerpt := definition
-		runes := []rune(excerpt)
-		if len(runes) > 30 {
-			excerpt = string(runes[:30]) + "…"
-		}
-		return "[" + excerpt + " 말투] " + text
+		return styledMock(definition, text)
 	}
 	// Legacy preset fallback for tests that still reference fixed types.
 	body := transformEnding(text, characterType)
@@ -241,6 +236,66 @@ func mockResponse(definition, characterType, text string) string {
 	default:
 		return body
 	}
+}
+
+// personaStyle is a deterministic speech style inferred from the definition.
+type personaStyle struct {
+	interjection string // 문두 추임새
+	tail         string // 문미 캐릭터 한마디
+}
+
+// detectStyle keyword-matches the user's definition to one of a few speech styles.
+// This is a heuristic stand-in for the LLM; it never breaks Korean grammar because
+// it only wraps (prefix interjection + suffix tail) rather than rewriting endings.
+func detectStyle(def string) personaStyle {
+	d := strings.ToLower(def)
+	has := func(words ...string) bool {
+		for _, w := range words {
+			if strings.Contains(d, w) {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case has("기사", "검사", "장군", "장수", "무사", "노장", "검호", "기사단", "백전", "용사", "전사"):
+		return personaStyle{interjection: "허허,", tail: "이 또한 명예로운 하루였노라."}
+	case has("츤데레", "무뚝뚝", "까칠", "새침", "퉁명"):
+		return personaStyle{interjection: "흥,", tail: "...뭐, 딱히 칭찬받고 싶어서 한 말은 아니야."}
+	case has("소녀", "꼬마", "아이", "발랄", "귀여", "명랑", "요정", "어린", "활발"):
+		return personaStyle{interjection: "에헤헤,", tail: "오늘도 정말 신나는 하루였어용!"}
+	case has("공주", "왕자", "귀족", "집사", "영애", "우아", "고귀", "황녀", "기품"):
+		return personaStyle{interjection: "", tail: "참으로 우아한 하루였사옵니다."}
+	case has("해적", "도적", "산적", "무법", "거친", "야성"):
+		return personaStyle{interjection: "크하하!", tail: "오늘도 신나게 한탕 했구만!"}
+	case has("로봇", "기계", "ai", "인공지능", "안드로이드", "사이보그"):
+		return personaStyle{interjection: "[처리 완료]", tail: "금일 임무 수행률 양호. 다음 작전을 대기한다."}
+	case has("차분", "지적", "현자", "학자", "선생", "교수", "철학"):
+		return personaStyle{interjection: "음,", tail: "오늘의 성취 또한 의미 있는 발걸음이었습니다."}
+	default:
+		return personaStyle{interjection: "", tail: "오늘도 한 걸음 더 나아갔어요!"}
+	}
+}
+
+func styledMock(definition, text string) string {
+	s := detectStyle(definition)
+	out := strings.TrimSpace(text)
+	if out == "" {
+		out = "오늘 하루를 보냈어요."
+	}
+	if s.interjection != "" {
+		out = s.interjection + " " + out
+	}
+	if s.tail != "" {
+		r := []rune(out)
+		switch r[len(r)-1] {
+		case '.', '!', '?', '~', '…':
+		default:
+			out += "."
+		}
+		out += " " + s.tail
+	}
+	return out
 }
 
 // transformEnding rewrites the trailing sentence ending of `text` so the mock
