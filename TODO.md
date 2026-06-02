@@ -13,21 +13,25 @@
 - [ ] `components/NavBar.tsx` 네비게이션을 신설 화면까지 포함하도록 갱신
 - [ ] 디자인 토큰(`tailwind.config.ts` + `app/globals.css`)만 사용 — 하드코딩 색상 금지
 
-## B. SuperRetroWorld 캐릭터 에셋 설치
+## B. 캐릭터 에셋 설치 (사용자 선택형)
 
-- [ ] `frontend/public/SuperRetroWorld_CharacterPack_Full.zip` 존재 확인 (없으면 itch.io에서 받아 같은 경로에 둠)
-- [ ] 라이선스 준수: zip·압축 해제본을 **공개 리포에 커밋 금지** (gitignore 처리)
-- [ ] 로컬에서 zip을 압축 해제하는 설치 스크립트·문서 마련 (개발자가 풀 받은 뒤 한 줄 명령으로 설치 가능해야 함)
-- [ ] AI 학습 데이터로 사용하지 않음 명시(README 또는 설정 화면) + 작가 크레딧 표기
-- [ ] AI 크롤러 차단(robots.txt) 권장
+> **에셋 출처는 자유**: itch.io, OpenGameArt.org, 자체 제작 등 개발자/사용자가 임의로 선택한다. 픽셀아트 스프라이트 시트 권장이지만 단일 이미지/PNG 시퀀스 등 어떤 형태도 가능. 어떤 에셋을 쓰든 **아래 체크리스트는 동일하게 적용**한다.
 
-## C. 캐릭터 에셋 교체
+- [ ] 에셋 파일을 `frontend/public/characters/` 하위에 배치 (서브폴더 구조는 자유)
+- [ ] 사용한 에셋의 **라이선스 검토 결과**를 명시: 사용 허용 범위(개인/상업/수정), 크레딧 표기 의무, 재배포 조건
+- [ ] 라이선스가 **공개 리포 커밋을 금지**하는 경우 `.gitignore`에 해당 경로 추가, 그렇지 않으면 그대로 커밋 가능
+- [ ] 외부 zip을 받아오는 형태라면 **로컬에서 한 줄로 설치 가능한 스크립트·문서** 마련 (예: `scripts/install-character-assets.ps1` + README 안내)
+- [ ] 작가 크레딧을 README 또는 설정 화면에 표기 (라이선스가 요구하지 않더라도 권장)
+- [ ] AI 학습 데이터로 사용하지 않음을 README 또는 설정 화면에 명시
+- [ ] AI 크롤러 차단(`public/robots.txt`)에 캐릭터 경로 추가 권장
 
-- [ ] `frontend/lib/character.ts`를 SuperRetroWorld 스프라이트 시트 모델로 재작성
+## C. 캐릭터 시스템 적용
+
+- [ ] `frontend/lib/character.ts`를 **선택한 에셋 구조**(스프라이트 시트 / 단일 이미지 / 애니메이션 프레임 등)에 맞춰 추상화 — 에셋 교체 시 이 파일만 갱신하면 되도록 인터페이스 격리
 - [ ] `frontend/components/CharacterAvatar.tsx`를 픽셀 보존 렌더로 교체 (`image-rendering: pixelated`)
-- [ ] 캐릭터 카탈로그를 SRS v1.3 가챠 확률(Appendix D)과 정합되도록 등급 분배
+- [ ] 캐릭터 카탈로그를 SRS v1.3 가챠 확률(Appendix D)과 정합되도록 등급 분배 (COMMON/RARE/EPIC/LEGENDARY)
 - [ ] DB 스키마에 영향 있으면 신규 마이그레이션 추가 (기존 `001_init.sql` 수정 금지)
-- [ ] 기존 Kenney 사용처 일괄 정리 — 미사용 코드 잔재 없음
+- [ ] 기존 캐릭터 에셋(예: Kenney) 사용처 일괄 정리 — 미사용 코드 잔재 없음
 
 ## 공통 규칙
 
