@@ -144,7 +144,7 @@ flowchart LR
     System[["EXP Calendar\n시스템"]]
     Google["Google\nCalendar API"]
     GoogleAuth["Google\nOAuth 2.0"]
-    LLM["LLM API\n(OpenAI 등)"]
+    LLM["LLM API\n(Google Gemini 등)"]
     PG["PG사\n결제 서비스"]
     Push["FCM /\nWeb Push"]
 
@@ -349,7 +349,7 @@ flowchart TB
 | A-01 | 사용자는 유효한 Google 계정을 보유하고 있다. |
 | A-02 | 사용자 디바이스의 브라우저가 Service Worker 및 Push API를 지원한다. |
 | A-03 | 사용자는 한국어를 주 언어로 사용한다. **기본 언어는 한국어**이며, English·日本語 선택 UI는 설정에 노출하되 실제 번역 적용은 V2(FR-SET-04). `[v1.3]` |
-| A-04 | LLM API(OpenAI 등)의 가용성이 99% 이상 유지된다. |
+| A-04 | LLM API(Google Gemini 등)의 가용성이 99% 이상 유지된다. |
 | A-05 | 초기 사용자 규모는 1,000명 이내로 예상한다. |
 
 #### 종속성 (Dependencies)
@@ -358,7 +358,7 @@ flowchart TB
 |---|-----------|-----------|--------|
 | D-01 | **Google OAuth 2.0** | 전체 인증 기능 | 심사 지연 시 테스트 모드 운영 |
 | D-02 | **Google Calendar API** | 일정 연동 기능 | API 할당량 초과 시 일정 동기화 지연 |
-| D-03 | **LLM API (OpenAI 등)** | 페르소나 변환 기능 | API 장애 시 변환 기능 일시 불가 (캐시 폴백) |
+| D-03 | **LLM API (Google Gemini 등)** | 페르소나 변환 기능 | API 장애 시 변환 기능 일시 불가 (캐시 폴백) |
 | D-04 | **온프레미스 서버** | 전체 서비스 운영 | 서버 장애 시 수동 복구 필요, 모니터링 설정 필수 |
 | D-05 | **FCM / Web Push** | 알림 기능 | 서비스 장애 시 알림 지연 (재시도 로직 적용) |
 
@@ -395,7 +395,7 @@ flowchart TB
 |----|-----------|----------|:----:|:-----------:|------|
 | SI-01 | **Google OAuth 2.0** | HTTPS/REST | 양방향 | JSON | 사용자 인증 및 액세스·리프레시 토큰 발급 |
 | SI-02 | **Google Calendar API** | HTTPS/REST | 단방향 | JSON | 일정 이벤트 데이터 읽기 |
-| SI-03 | **LLM API** (OpenAI 등) | HTTPS/REST | 양방향 | JSON | 페르소나 텍스트 변환 요청·응답 |
+| SI-03 | **LLM API** (Google Gemini 등) | HTTPS/REST | 양방향 | JSON | 페르소나 텍스트 변환 요청·응답 |
 | SI-04 | **PG사 결제 API** *(선택)* | HTTPS/REST | 양방향 | JSON | 결제 요청·결과 수신·환불 처리 |
 | SI-05 | **FCM / Web Push** | HTTPS | 단방향 | JSON | Push 알림 메시지 발송 |
 | SI-06 | **PostgreSQL** | TCP/IP | 양방향 | SQL | Connection Pool 기반 DB 통신 |
