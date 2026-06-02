@@ -1,6 +1,6 @@
 # Integration Tests
 
-요구사항서(SRS v1.2, IEEE 830) 기반 인테그레이션 테스트 스위트.
+요구사항서(SRS v1.4, IEEE 830) 기반 인테그레이션 테스트 스위트.
 
 - 실제 백엔드 + DB 컨테이너에 HTTP로 hit
 - 단위테스트(`backend/internal/game/...`)와는 별개로, 핸들러·트랜잭션·DB 통합 검증

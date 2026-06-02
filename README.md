@@ -1,6 +1,6 @@
 # EXP Calendar
 
-게이미피케이션 기반 일정 관리 시스템 (SRS v1.2 기준).
+게이미피케이션 기반 일정 관리 시스템 (SRS v1.4 기준).
 Google Calendar 연동을 통한 일정 관리에 EXP / 포인트 / 칭호 보상,
 LLM 페르소나 텍스트 변환, 소셜 쇼케이스를 결합한 PWA이다.
 프론트엔드는 Next.js 14(React), 백엔드는 Go(Gin), 저장소는 PostgreSQL(pgvector) 단일 인스턴스로 구성한다.
@@ -166,7 +166,7 @@ docker compose exec db psql -U exp -d expcalendar -c "select count(*) from users
 
 ## 구현 범위 (MVP)
 
-본 저장소는 SRS v1.2 의 다음 범위를 MVP 로 구현한다.
+본 저장소는 SRS v1.4 의 다음 범위를 MVP 로 구현한다.
 
 - **Part A (인증)**: dev-login + Google OAuth(선택) + JWT access/refresh.
 - **Part B (게임 엔진)**: 일정 완료에 따른 EXP / 포인트 산정, 레벨업.
