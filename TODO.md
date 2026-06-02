@@ -10,7 +10,7 @@
 
 - [ ] 와이어프레임과 SRS v1.3에 맞춰 `frontend/app/(app)/` 전 화면 점검·수정
 - [ ] SRS v1.3에 있고 현재 없는 화면 신설 (퀘스트 / 소환·가챠 / 통계 / 통합 설정)
-- [ ] `components/NavBar.tsx` 네비게이션을 신설 화면까지 포함하도록 갱신
+- [ ] `components/NavBar.tsx` 및 `app/(app)/layout.tsx` 네비게이션을 신설 화면까지 포함하도록 갱신
 - [ ] 디자인 토큰(`tailwind.config.ts` + `app/globals.css`)만 사용 — 하드코딩 색상 금지
 
 ## B. 캐릭터 에셋 설치 (사용자 선택형)
