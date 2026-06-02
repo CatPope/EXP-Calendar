@@ -54,6 +54,70 @@ func (r *TitleRepo) getByNameTx(ctx context.Context, tx pgx.Tx, name string) (*m
 	return &t, nil
 }
 
+// TitleWithCondition pairs a master title with its raw unlock condition string.
+type TitleWithCondition struct {
+	Title     *models.Title
+	Condition string
+}
+
+// ListAllWithCondition returns every master title plus its condition string, for
+// stat-based title evaluation (SRS v1.3 Appendix C).
+func (r *TitleRepo) ListAllWithCondition(ctx context.Context) ([]TitleWithCondition, error) {
+	rows, err := r.Pool.Query(ctx,
+		`SELECT id, name, grade, color_hex, icon_url, description, condition FROM titles ORDER BY name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []TitleWithCondition
+	for rows.Next() {
+		t := &models.Title{}
+		if err := rows.Scan(&t.ID, &t.Name, &t.Grade, &t.ColorHex, &t.IconURL, &t.Description, &t.Condition); err != nil {
+			return nil, err
+		}
+		out = append(out, TitleWithCondition{Title: t, Condition: t.Condition})
+	}
+	return out, rows.Err()
+}
+
+// AttachNegativeModifierTx sets a penalty modifier on the user's equipped title
+// only if one is not already present. Returns true if it newly attached.
+func (r *TitleRepo) AttachNegativeModifierTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID, modifier string) (bool, error) {
+	tag, err := tx.Exec(ctx,
+		`UPDATE user_titles SET negative_modifier=$1
+		 WHERE user_id=$2 AND is_equipped=true AND negative_modifier IS NULL`,
+		modifier, userID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// ClearNegativeModifierTx removes the penalty modifier from the user's equipped
+// title (FR-TITLE-04 recovery). Returns true if a modifier was cleared.
+func (r *TitleRepo) ClearNegativeModifierTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID) (bool, error) {
+	tag, err := tx.Exec(ctx,
+		`UPDATE user_titles SET negative_modifier=NULL
+		 WHERE user_id=$1 AND is_equipped=true AND negative_modifier IS NOT NULL`,
+		userID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// ClearNegativeModifier is a non-tx wrapper (used by shop defense purchase).
+func (r *TitleRepo) ClearNegativeModifier(ctx context.Context, userID uuid.UUID) (bool, error) {
+	tag, err := r.Pool.Exec(ctx,
+		`UPDATE user_titles SET negative_modifier=NULL
+		 WHERE user_id=$1 AND is_equipped=true AND negative_modifier IS NOT NULL`,
+		userID)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
 // ListUserTitles returns the user's titles joined with the master.
 func (r *TitleRepo) ListUserTitles(ctx context.Context, userID uuid.UUID) ([]*models.UserTitle, error) {
 	rows, err := r.Pool.Query(ctx,

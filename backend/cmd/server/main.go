@@ -22,6 +22,7 @@ import (
 	"github.com/expcalendar/backend/internal/config"
 	"github.com/expcalendar/backend/internal/db"
 	"github.com/expcalendar/backend/internal/server"
+	"github.com/expcalendar/backend/internal/worker"
 )
 
 func main() {
@@ -43,6 +44,13 @@ func main() {
 	log.Printf("migrations applied from %s", cfg.MigrationsDir)
 
 	router := server.NewRouter(cfg, pool)
+
+	// Background worker: schedule reminders (FR-NOTI-02) + OVERDUE sweep/penalty
+	// (FR-TITLE-03). Logs pushes; wire a real Web Push sender when VAPID is set.
+	workerCtx, cancelWorker := context.WithCancel(context.Background())
+	defer cancelWorker()
+	worker.New(pool, worker.LogNotifier{Enabled: true}).Start(workerCtx)
+	log.Printf("background worker started (reminders + overdue sweep)")
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

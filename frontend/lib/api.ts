@@ -20,7 +20,15 @@ import type {
   UserTitle,
   Purchase,
   CharacterType,
-  Tendency
+  Tendency,
+  QuestCompleteResult,
+  StatsSummary,
+  SeriesPoint,
+  SummonInfo,
+  SummonResult,
+  GachaCharacter,
+  OwnedCharacter,
+  Settings
 } from "./types";
 
 export const BASE_URL =
@@ -228,10 +236,7 @@ export const Api = {
   // quests
   todayQuests: () => apiFetch<Quest[]>("/api/quests/today"),
   completeQuest: (qt: QuestType) =>
-    apiFetch<{ completed: boolean; reward_points: number; current_points: number }>(
-      `/api/quests/${qt}/complete`,
-      { method: "POST" }
-    ),
+    apiFetch<QuestCompleteResult>(`/api/quests/${qt}/complete`, { method: "POST" }),
 
   // shop
   listShop: () => apiFetch<ShopItem[]>("/api/shop/items"),
@@ -281,5 +286,40 @@ export const Api = {
 
   // stats
   grass: (days = 365) =>
-    apiFetch<Record<string, number>>(`/api/stats/grass?days=${days}`)
+    apiFetch<Record<string, number>>(`/api/stats/grass?days=${days}`),
+  series: (period: "week" | "month" | "year" = "week") =>
+    apiFetch<SeriesPoint[]>(`/api/stats/series?period=${period}`),
+  statsSummary: () => apiFetch<StatsSummary>("/api/stats/summary"),
+
+  // summon (가챠·캐릭터 수집)
+  summonInfo: () => apiFetch<SummonInfo>("/api/summon/info"),
+  summonCollection: () =>
+    apiFetch<{ catalog: GachaCharacter[]; owned: OwnedCharacter[] }>(
+      "/api/summon/collection"
+    ),
+  summonDraw: (count: 1 | 10, cost_type: "POINTS" | "TICKET" = "POINTS") =>
+    apiFetch<SummonResult>("/api/summon/draw", {
+      method: "POST",
+      body: JSON.stringify({ count, cost_type })
+    }),
+  summonEquip: (character_id: string) =>
+    apiFetch<{ ok: true }>("/api/summon/equip", {
+      method: "POST",
+      body: JSON.stringify({ character_id })
+    }),
+  buyTickets: (count: number) =>
+    apiFetch<{ tickets: number; remaining_points: number }>(
+      "/api/summon/tickets/buy",
+      { method: "POST", body: JSON.stringify({ count }) }
+    ),
+
+  // settings / account
+  getSettings: () => apiFetch<Settings>("/api/settings"),
+  patchSettings: (patch: Partial<Settings>) =>
+    apiFetch<Settings>("/api/settings", {
+      method: "PATCH",
+      body: JSON.stringify(patch)
+    }),
+  exportData: () => apiFetch<Record<string, unknown>>("/api/me/export"),
+  resetAccount: () => apiFetch<{ ok: true }>("/api/me/reset", { method: "POST" })
 };

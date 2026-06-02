@@ -6,15 +6,47 @@ import (
 	"time"
 
 	"github.com/expcalendar/backend/internal/middleware"
+	"github.com/expcalendar/backend/internal/models"
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
 )
 
 type StatsHandler struct {
 	Rewards *repo.RewardRepo
+	Stats   *repo.StatsRepo
 }
 
-func NewStatsHandler(r *repo.RewardRepo) *StatsHandler { return &StatsHandler{Rewards: r} }
+func NewStatsHandler(r *repo.RewardRepo, s *repo.StatsRepo) *StatsHandler {
+	return &StatsHandler{Rewards: r, Stats: s}
+}
+
+// Summary returns the caller's rating grade and streaks (FR-STAT-03/05).
+func (h *StatsHandler) Summary(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	ctx := c.Request.Context()
+	current, _ := h.Rewards.ConsecutiveCompletionDays(ctx, uid, kstToday(), 120)
+	completed, failed, rating, longest, err := h.Stats.Summary(ctx, uid, current)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	rate := 0.0
+	if completed+failed > 0 {
+		rate = float64(completed) / float64(completed+failed)
+	}
+	Respond(c, http.StatusOK, models.StatsSummary{
+		TotalCompleted: completed,
+		TotalFailed:    failed,
+		SuccessRate:    rate,
+		RatingGrade:    rating,
+		CurrentStreak:  current,
+		LongestStreak:  longest,
+	})
+}
 
 func (h *StatsHandler) Grass(c *gin.Context) {
 	uid, ok := middleware.GetUserID(c)

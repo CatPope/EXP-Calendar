@@ -53,18 +53,23 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 	rewards := repo.NewRewardRepo(pool)
 	refresh := repo.NewRefreshRepo(pool)
 	push := repo.NewPushRepo(pool)
+	stats := repo.NewStatsRepo(pool)
+	characters := repo.NewCharacterRepo(pool)
+	settings := repo.NewSettingsRepo(pool)
 
 	// --- handlers ---------------------------------------------------------
 	authH := handlers.NewAuthHandler(cfg, jwtMgr, users, refresh, titles)
 	meH := handlers.NewMeHandler(users, titles)
-	schedH := handlers.NewSchedulesHandler(pool, users, schedules, titles, quests, rewards)
+	schedH := handlers.NewSchedulesHandler(pool, users, schedules, titles, quests, rewards, stats)
 	questsH := handlers.NewQuestsHandler(pool, quests, users, schedules)
-	shopH := handlers.NewShopHandler(pool, shop, users)
+	shopH := handlers.NewShopHandler(pool, shop, users, titles)
 	titlesH := handlers.NewTitlesHandler(titles)
 	personaH := handlers.NewPersonaHandler(llmClient, users, titles)
 	showcaseH := handlers.NewShowcaseHandler(users, titles, rewards, quests)
-	statsH := handlers.NewStatsHandler(rewards)
+	statsH := handlers.NewStatsHandler(rewards, stats)
 	notifH := handlers.NewNotificationsHandler(push)
+	summonH := handlers.NewSummonHandler(pool, users, characters)
+	settingsH := handlers.NewSettingsHandler(pool, settings, users)
 
 	// --- health -----------------------------------------------------------
 	r.GET("/health", func(c *gin.Context) {
@@ -92,6 +97,19 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.POST("/me/onboarding", meH.Onboarding)
 		authed.PATCH("/me/character", meH.SetCharacter)
 		authed.PATCH("/me/profile", meH.SetProfile)
+		authed.GET("/me/export", settingsH.Export)
+		authed.POST("/me/reset", settingsH.Reset)
+
+		// settings (통합 설정)
+		authed.GET("/settings", settingsH.Get)
+		authed.PATCH("/settings", settingsH.Patch)
+
+		// summon (가챠·캐릭터 수집)
+		authed.GET("/summon/info", summonH.Info)
+		authed.GET("/summon/collection", summonH.Collection)
+		authed.POST("/summon/draw", summonH.Draw)
+		authed.POST("/summon/equip", summonH.Equip)
+		authed.POST("/summon/tickets/buy", summonH.BuyTickets)
 
 		// schedules
 		authed.GET("/schedules", schedH.List)
@@ -125,6 +143,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		// stats
 		authed.GET("/stats/grass", statsH.Grass)
 		authed.GET("/stats/series", statsH.Series)
+		authed.GET("/stats/summary", statsH.Summary)
 
 		// notifications
 		authed.POST("/notifications/subscribe", notifH.Subscribe)

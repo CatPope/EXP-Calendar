@@ -25,6 +25,20 @@
 - [ ] DB 스키마에 영향 있으면 신규 마이그레이션 추가 (기존 `001_init.sql` 수정 금지)
 - [ ] 기존 캐릭터 에셋(예: Kenney) 사용처 일괄 정리 — 미사용 코드 잔재 없음
 
+## D. v1.3 기능 정합 — 백엔드/프론트 풀스택 (2026-06-02 구현)
+
+> 프론트 대비 미구현 기능 전부 구현. SSoT(`api_and_rules.md`)·engine·마이그레이션 동기화 완료. 컨테이너 빌드/`go test`/e2e 검증됨.
+
+- [x] **규칙 정합**: 퀘스트 차등 보상(ADD_PLAN 20·COMPLETE_PLAN 30·VISIT_SHOWCASE 15) + 3종 보너스 +50 + 7일 스트릭 ×2 (`engine.go`, `quests.go`)
+- [x] **칭호 8종**(SRS Appendix C) 정합: 레벨 기반 폐기 → `condition` 파싱(STREAK/COMPLETE_COUNT/MORNING/HIGH/OVERDUE/LEGENDARY_CHAR) 기반 부여, 일정 완료 후 평가 (`migrations/005`, `engine.go`, `schedules.go`, `stats.go`)
+- [x] **페널티**(FR-TITLE-03/04): worker가 OVERDUE 스윕 → 장착 칭호에 "게으른" 부착·`overdue_count++`; 정상 완료 또는 DEFENSE 구매로 복구 (`worker/`, `schedules.go`, `shop.go`)
+- [x] **가챠·소환 풀스택**(Part K): `characters`/`user_characters`/`summon_log` + 확률(60/28/9/3, 픽업 2배)·천장90·10연차 RARE+확정·중복 환급·단일 장착·소환권 (`summon.go`, `characters.go`, 프론트 `summon/`)
+- [x] **알림**(FR-NOTI-02): worker 리마인더 스캔(사용자 `reminder_minutes` 전) + 발송 추상화(`LogNotifier`). 실제 Web Push 발송은 VAPID 키 + push 라이브러리 연동 후속 `[!]`
+- [x] **통합 설정**(Part L): `user_settings` + GET/PATCH `/settings`, JSON 내보내기, 계정 초기화 (`settings.go`, 프론트 `settings/`)
+- [x] **통계·등급**(FR-STAT-03/05): `/stats/summary`(rating D~S·현재/최장 스트릭), 프론트 `stats/`
+- [x] **프론트 화면 4종**(UI-08/09/10/11): `quests`/`summon`/`stats`/`settings` + `api.ts`·`types.ts`·네비 갱신 (next build 통과)
+- [!] 후속: 실제 Web Push 발송(VAPID), GCal 양방향(V2), 다국어/다중테마(V2, UI만 노출)
+
 ## 공통 규칙
 
 - 작업 시작 전 `CLAUDE.md` 정독.

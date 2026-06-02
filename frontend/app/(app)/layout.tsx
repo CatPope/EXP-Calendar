@@ -11,6 +11,9 @@ import {
   Users,
   LogOut,
   Settings,
+  ListChecks,
+  BarChart3,
+  Gift,
   X
 } from "lucide-react";
 import { Api, humanizeError } from "@/lib/api";
@@ -23,10 +26,14 @@ import Spinner from "@/components/common/Spinner";
 
 const NAV = [
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
+  { href: "/quests", label: "Quests", icon: ListChecks },
   { href: "/shop", label: "Shop", icon: ShoppingBag },
+  { href: "/summon", label: "Summon", icon: Gift },
   { href: "/titles", label: "Titles", icon: Crown },
   { href: "/persona", label: "Persona", icon: Sparkles },
-  { href: "/showcase", label: "Showcase", icon: Users }
+  { href: "/stats", label: "Stats", icon: BarChart3 },
+  { href: "/showcase", label: "Showcase", icon: Users },
+  { href: "/settings", label: "Settings", icon: Settings }
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

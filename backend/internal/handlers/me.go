@@ -38,6 +38,8 @@ type meResponse struct {
 	PersonaDefinition    string `json:"persona_definition"`
 	PersonaTokens        int    `json:"persona_tokens"`
 	CharacterSkin        string `json:"character_skin"`
+	SummonTickets        int    `json:"summon_tickets"`
+	PityCounter          int    `json:"pity_counter"`
 	EquippedTitle        any    `json:"equipped_title"`
 	Tendency             string `json:"tendency"`
 }
@@ -80,6 +82,8 @@ func (h *MeHandler) Get(c *gin.Context) {
 		PersonaDefinition:    u.PersonaDefinition,
 		PersonaTokens:        u.PersonaTokens,
 		CharacterSkin:        u.CharacterSkin,
+		SummonTickets:        u.SummonTickets,
+		PityCounter:          u.PityCounter,
 		EquippedTitle:        equippedJSON,
 		Tendency:             u.Tendency,
 	})

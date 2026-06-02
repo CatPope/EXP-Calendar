@@ -21,6 +21,9 @@ type Config struct {
 	DevMode              bool
 	AllowedOrigins       []string
 	MigrationsDir        string
+	VAPIDPublic          string
+	VAPIDPrivate         string
+	VAPIDSubject         string
 }
 
 func Load() *Config {
@@ -45,6 +48,9 @@ func Load() *Config {
 		DevMode:             strings.EqualFold(getenv("DEV_MODE", "true"), "true"),
 		AllowedOrigins:      splitCsv(getenv("ALLOWED_ORIGINS", "http://localhost:3000")),
 		MigrationsDir:       getenv("MIGRATIONS_DIR", "migrations"),
+		VAPIDPublic:         getenv("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivate:        getenv("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:        getenv("VAPID_SUBJECT", "mailto:admin@expcalendar.local"),
 	}
 }
 

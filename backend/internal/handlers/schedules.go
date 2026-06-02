@@ -23,10 +23,11 @@ type SchedulesHandler struct {
 	Titles    *repo.TitleRepo
 	Quests    *repo.QuestRepo
 	Rewards   *repo.RewardRepo
+	Stats     *repo.StatsRepo
 }
 
-func NewSchedulesHandler(pool *pgxpool.Pool, u *repo.UserRepo, s *repo.ScheduleRepo, t *repo.TitleRepo, q *repo.QuestRepo, r *repo.RewardRepo) *SchedulesHandler {
-	return &SchedulesHandler{Pool: pool, Users: u, Schedules: s, Titles: t, Quests: q, Rewards: r}
+func NewSchedulesHandler(pool *pgxpool.Pool, u *repo.UserRepo, s *repo.ScheduleRepo, t *repo.TitleRepo, q *repo.QuestRepo, r *repo.RewardRepo, st *repo.StatsRepo) *SchedulesHandler {
+	return &SchedulesHandler{Pool: pool, Users: u, Schedules: s, Titles: t, Quests: q, Rewards: r, Stats: st}
 }
 
 type createScheduleReq struct {
@@ -247,15 +248,15 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	// 6) level-up titles
-	newTitles, err := h.checkTitlesUnlocked(ctx, tx, uid, uCurrent.Level, newLevel)
-	if err != nil {
+	// 6) COMPLETE_PLAN quest auto-complete (any 1 completion today)
+	if err := h.checkQuestProgress(ctx, tx, uid, today); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
 
-	// 7) COMPLETE_PLAN quest auto-complete (any 1 completion today)
-	if err := h.checkQuestProgress(ctx, tx, uid, today); err != nil {
+	// 7) penalty recovery (FR-TITLE-04): a normal completion clears the penalty
+	//    modifier on the equipped title.
+	if _, err := h.Titles.ClearNegativeModifierTx(ctx, tx, uid); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
@@ -265,18 +266,9 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	// 8) 7-day streak check (outside tx; uses committed data)
-	if streak, err := h.Rewards.ConsecutiveCompletionDays(ctx, uid, today, 14); err == nil && streak >= 7 {
-		// grant "꾸준한 자"
-		tx2, err := h.Pool.Begin(ctx)
-		if err == nil {
-			t, granted, err := h.Titles.GrantTitleByName(ctx, tx2, uid, "꾸준한 자")
-			if err == nil && granted {
-				newTitles = append(newTitles, t)
-			}
-			_ = tx2.Commit(ctx)
-		}
-	}
+	// 8) stat-based title evaluation (SRS v1.3 Appendix C). Runs post-commit so the
+	//    aggregate queries see this completion. Grants any newly satisfied titles.
+	newTitles := h.evaluateTitles(ctx, uid, today)
 
 	// reload schedule for response
 	sched, _ = h.Schedules.GetByID(ctx, uid, id)
@@ -412,23 +404,38 @@ func (h *SchedulesHandler) applyReward(
 	return newLevel, ptsGranted, capReached, nil
 }
 
-// checkTitlesUnlocked grants every master title whose unlock condition lies in
-// the (oldLevel, newLevel] window. Returns the newly granted titles only.
-func (h *SchedulesHandler) checkTitlesUnlocked(
-	ctx context.Context, tx pgx.Tx,
-	uid uuid.UUID, oldLevel, newLevel int,
-) ([]*models.Title, error) {
+// evaluateTitles computes the user's stat progress and grants every master title
+// whose condition is now satisfied but not yet owned (SRS v1.3 Appendix C). It runs
+// post-commit (best-effort) and returns the newly granted titles for the response.
+func (h *SchedulesHandler) evaluateTitles(ctx context.Context, uid uuid.UUID, today time.Time) []*models.Title {
 	out := []*models.Title{}
-	for _, name := range game.TitlesUnlockedBetween(oldLevel, newLevel) {
-		t, granted, err := h.Titles.GrantTitleByName(ctx, tx, uid, name)
-		if err != nil {
-			return nil, err
+	streak, _ := h.Rewards.ConsecutiveCompletionDays(ctx, uid, today, 120)
+	prog, err := h.Stats.Progress(ctx, uid, streak)
+	if err != nil {
+		return out
+	}
+	conds, err := h.Titles.ListAllWithCondition(ctx)
+	if err != nil {
+		return out
+	}
+	for _, tc := range conds {
+		cond, ok := game.ParseTitleCondition(tc.Condition)
+		if !ok || !prog.Satisfies(cond) {
+			continue
 		}
-		if granted {
+		tx, err := h.Pool.Begin(ctx)
+		if err != nil {
+			continue
+		}
+		t, granted, err := h.Titles.GrantTitleByName(ctx, tx, uid, tc.Title.Name)
+		if err == nil && granted {
 			out = append(out, t)
+			_ = tx.Commit(ctx)
+		} else {
+			_ = tx.Rollback(ctx)
 		}
 	}
-	return out, nil
+	return out
 }
 
 // checkQuestProgress auto-completes COMPLETE_PLAN for the day (single completion

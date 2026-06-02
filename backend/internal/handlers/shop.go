@@ -14,13 +14,14 @@ import (
 )
 
 type ShopHandler struct {
-	Pool  *pgxpool.Pool
-	Shop  *repo.ShopRepo
-	Users *repo.UserRepo
+	Pool   *pgxpool.Pool
+	Shop   *repo.ShopRepo
+	Users  *repo.UserRepo
+	Titles *repo.TitleRepo
 }
 
-func NewShopHandler(p *pgxpool.Pool, s *repo.ShopRepo, u *repo.UserRepo) *ShopHandler {
-	return &ShopHandler{Pool: p, Shop: s, Users: u}
+func NewShopHandler(p *pgxpool.Pool, s *repo.ShopRepo, u *repo.UserRepo, t *repo.TitleRepo) *ShopHandler {
+	return &ShopHandler{Pool: p, Shop: s, Users: u, Titles: t}
 }
 
 func (h *ShopHandler) List(c *gin.Context) {
@@ -89,6 +90,21 @@ func (h *ShopHandler) Purchase(c *gin.Context) {
 	// definition write. Other PERSONA-category items would be no-ops here.
 	if it.Category == "PERSONA" && it.Effect == "persona:token" {
 		if err := h.Users.AddPersonaTokens(ctx, tx, uid, 1); err != nil {
+			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+			return
+		}
+	}
+	// Side-effect: 등급 하락 방어권 (DEFENSE) clears the equipped title's penalty
+	// modifier (FR-TITLE-04 recovery via defense item, DC-07).
+	if it.Category == "DEFENSE" {
+		if _, err := h.Titles.ClearNegativeModifierTx(ctx, tx, uid); err != nil {
+			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+			return
+		}
+	}
+	// Side-effect: summon ticket items (effect=summon:ticket[:N]) grant tickets.
+	if it.Effect == "summon:ticket" {
+		if _, err := tx.Exec(ctx, `UPDATE users SET summon_tickets=summon_tickets+1 WHERE id=$1`, uid); err != nil {
 			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 			return
 		}

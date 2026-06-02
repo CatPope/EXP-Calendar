@@ -10,14 +10,12 @@ import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type { UserTitle } from "@/lib/types";
-import { SKINS, unlockedSkins, skinFromLevel, type SkinId } from "@/lib/character";
-
-const GRADE_LABEL: Record<string, string> = {
-  COMMON: "일반",
-  RARE: "레어",
-  EPIC: "에픽",
-  LEGENDARY: "레전더리",
-};
+import {
+  groupedCharacters,
+  skinById,
+  DEFAULT_SKIN,
+  type SkinId,
+} from "@/lib/character";
 
 export default function TitlesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -34,21 +32,25 @@ export default function TitlesPage() {
   const [overrides, setOverrides] = useState<UserTitle[] | null>(null);
   const titles = overrides ?? data ?? [];
 
-  // 캐릭터 디자인: 보유 칭호 등급으로 해금, 선택은 서버(users.character_skin)에 저장.
+  // 캐릭터 디자인: 모든 캐릭터 선택 가능, 선택은 서버(users.character_skin)에 저장.
   const user = useAppStore((s) => s.user);
   const level = user?.level ?? 1;
-  const ownedGrades = titles.map((ut) => ut.title.grade);
-  const unlocked = unlockedSkins(ownedGrades);
-  const unlockedIds = new Set(unlocked.map((s) => s.id));
+  const groups = groupedCharacters();
 
   const [skin, setSkin] = useState<SkinId | null>(null);
   useEffect(() => {
-    const stored = (user?.character_skin as SkinId) || null;
-    setSkin(stored ?? skinFromLevel(level).id);
-  }, [level, user?.character_skin]);
-  // 선택한 스킨이 아직 해금 안 됐으면 안전하게 레벨 기본값으로.
-  const activeSkin: SkinId =
-    skin && unlockedIds.has(skin) ? skin : skinFromLevel(level).id;
+    setSkin((user?.character_skin as SkinId) || DEFAULT_SKIN);
+  }, [user?.character_skin]);
+  const activeSkin: SkinId = skin || DEFAULT_SKIN;
+
+  // 선택된 캐릭터가 속한 카테고리를 기본 탭으로.
+  const activeCategory = skinById(activeSkin).category;
+  const [tab, setTab] = useState<string | null>(null);
+  useEffect(() => {
+    setTab((t) => t ?? activeCategory);
+  }, [activeCategory]);
+  const currentTab = tab ?? groups[0]?.category ?? "";
+  const tabItems = groups.find((g) => g.category === currentTab)?.items ?? [];
 
   async function selectSkin(id: SkinId) {
     setSkin(id);
@@ -118,33 +120,57 @@ export default function TitlesPage() {
 
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
-      {/* 캐릭터 디자인: 보유 칭호 등급으로 해금 */}
-      <div className="card flex flex-col sm:flex-row items-center gap-4">
-        <CharacterAvatar level={level} skin={activeSkin} size={180} withFrame />
-        <div className="flex-1 space-y-2 w-full">
-          <h2 className="font-semibold">내 캐릭터 디자인</h2>
-          <p className="text-xs text-text-2">
-            보유한 칭호 등급에 따라 캐릭터 디자인이 해금됩니다.
-          </p>
-          <select
-            value={activeSkin}
-            onChange={(e) => selectSkin(e.target.value as SkinId)}
-            className="w-full sm:max-w-xs rounded-md bg-surface-2 border border-border px-3 py-2 text-sm text-text-1 focus:outline-none focus:border-accent"
-          >
-            {SKINS.map((s) => {
-              const locked = !unlockedIds.has(s.id);
-              const need = s.unlockGrade ? `${GRADE_LABEL[s.unlockGrade]} 칭호 필요` : "";
-              return (
-                <option key={s.id} value={s.id} disabled={locked}>
-                  {s.label}
-                  {locked ? ` (잠김 · ${need})` : ""}
-                </option>
-              );
-            })}
-          </select>
-          <p className="text-[11px] text-text-2">
-            잠금 해제: 일반(러너) · 레어(무법자) · 에픽(사이보그) 등급 칭호를 획득하세요.
-          </p>
+      {/* 캐릭터 디자인: 모든 캐릭터 선택 가능 */}
+      <div className="card space-y-4">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <CharacterAvatar level={level} skin={activeSkin} size={140} withFrame />
+          <div className="flex-1 space-y-1 w-full">
+            <h2 className="font-semibold">내 캐릭터 디자인</h2>
+            <p className="text-sm text-accent">{skinById(activeSkin).label}</p>
+            <p className="text-xs text-text-2">
+              원하는 캐릭터를 골라보세요. 모든 캐릭터를 사용할 수 있습니다.
+            </p>
+          </div>
+        </div>
+
+        {/* 카테고리 탭 */}
+        <div className="flex flex-wrap gap-1.5">
+          {groups.map((g) => (
+            <button
+              key={g.category}
+              onClick={() => setTab(g.category)}
+              className={`text-xs rounded-full px-3 py-1 transition-colors ${
+                g.category === currentTab
+                  ? "bg-accent text-white"
+                  : "bg-surface-2 text-text-2 hover:bg-border"
+              }`}
+            >
+              {g.category}
+              <span className="ml-1 opacity-60">{g.items.length}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 캐릭터 그리드 */}
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-80 overflow-y-auto pr-1">
+          {tabItems.map((c) => {
+            const selected = c.id === activeSkin;
+            return (
+              <button
+                key={c.id}
+                onClick={() => selectSkin(c.id)}
+                title={c.label}
+                aria-pressed={selected}
+                className={`flex items-center justify-center rounded-md p-1 border transition-colors ${
+                  selected
+                    ? "border-accent bg-accent/15"
+                    : "border-border bg-surface-2 hover:border-accent/50"
+                }`}
+              >
+                <CharacterAvatar level={level} skin={c.id} size={48} animated={false} />
+              </button>
+            );
+          })}
         </div>
       </div>
 
