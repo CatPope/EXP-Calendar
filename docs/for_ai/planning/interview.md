@@ -375,7 +375,7 @@ flowchart LR
 |----|-----------|----------|------|------|
 | IF-01 | Google OAuth 2.0 | HTTPS/REST | 양방향 | 사용자 인증 및 토큰 발급 |
 | IF-02 | Google Calendar API | HTTPS/REST | 단방향→양방향 | 일정 데이터 읽기(V1), 동기화(V2) |
-| IF-03 | LLM API (OpenAI 등) | HTTPS/REST | 양방향 | 페르소나 텍스트 변환 요청·응답 |
+| IF-03 | LLM API (Google Gemini 등) | HTTPS/REST | 양방향 | 페르소나 텍스트 변환 요청·응답 |
 | IF-04 | PG사 결제 API | HTTPS/REST | 양방향 | 결제 요청·결과 수신·환불 처리 |
 | IF-05 | FCM / Web Push | HTTPS | 단방향 | Push 알림 발송 |
 

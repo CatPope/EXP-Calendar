@@ -1,6 +1,6 @@
 # Integration Tests
 
-요구사항서(SRS v1.2, IEEE 830) 기반 인테그레이션 테스트 스위트.
+요구사항서(SRS v1.4, IEEE 830) 기반 인테그레이션 테스트 스위트.
 
 - 실제 백엔드 + DB 컨테이너에 HTTP로 hit
 - 단위테스트(`backend/internal/game/...`)와는 별개로, 핸들러·트랜잭션·DB 통합 검증
@@ -34,7 +34,7 @@ go test ./integration/... -v -count=1
 
 - DB는 `tmpfs` 마운트라 컨테이너 재시작마다 깨끗하게 초기화됨
 - 각 테스트는 **무작위 이메일**(`xxx-<hex>@test.local`)로 dev-login → 사용자 격리
-- `OPENAI_API_KEY=""`로 띄워서 LLM mock 폴백 강제 (결정론적 출력)
+- `GEMINI_API_KEY=""`로 띄워서 LLM mock 폴백 강제 (결정론적 출력)
 - 운영용 `docker-compose.yml`과 포트 충돌 없음 (test-db: 5433, test-backend: 8081)
 
 ## 커버 범위
@@ -74,6 +74,6 @@ go test ./integration/... -v -count=1
 - Push 알림 실수신 (FCM 브로커 필요)
 - Google OAuth 실 로그인
 - Google Calendar 일정 import (FR-AUTH-03)
-- 실 OpenAI 응답 품질 (mock이 아닌 실 키 사용 시)
+- 실 Google Gemini 응답 품질 (mock이 아닌 실 키 사용 시)
 
 브라우저로 직접 시연하거나 Playwright/Cypress 추가 권장.

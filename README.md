@@ -1,6 +1,6 @@
 # EXP Calendar
 
-게이미피케이션 기반 일정 관리 시스템 (SRS v1.2 기준).
+게이미피케이션 기반 일정 관리 시스템 (SRS v1.4 기준).
 Google Calendar 연동을 통한 일정 관리에 EXP / 포인트 / 칭호 보상,
 LLM 페르소나 텍스트 변환, 소셜 쇼케이스를 결합한 PWA이다.
 프론트엔드는 Next.js 14(React), 백엔드는 Go(Gin), 저장소는 PostgreSQL(pgvector) 단일 인스턴스로 구성한다.
@@ -22,7 +22,7 @@ flowchart LR
     subgraph External [외부 서비스]
         GAuth[Google OAuth 2.0]
         GCal[Google Calendar API]
-        OAI[OpenAI API]
+        GEM[Google Gemini API]
         Push[FCM / Web Push]
     end
 
@@ -34,7 +34,7 @@ flowchart LR
     BE -- SQL --> DB
     BE --> GAuth
     BE --> GCal
-    BE --> OAI
+    BE --> GEM
     BE --> Push
 ```
 
@@ -54,7 +54,7 @@ flowchart LR
 # 1. .env 준비
 Copy-Item .env.example .env
 
-# 2. (선택) Google OAuth / OpenAI 키 입력. 없으면 dev-login 으로 진행 가능
+# 2. (선택) Google OAuth / Gemini API 키 입력. 없으면 dev-login 으로 진행 가능
 notepad .env
 
 # 3. 빌드 + 실행
@@ -88,9 +88,9 @@ docker compose up -d --build
 
 ## LLM 페르소나 키 설정
 
-- `.env` 의 `OPENAI_API_KEY` 에 키를 입력하면 페르소나 페이지에서 **실제 OpenAI API** 를 호출한다.
-- 비워두면 백엔드가 **결정적(mock) 응답**으로 폴백한다. 기능 시연 및 자동 테스트는 mock 만으로도 가능하다.
-- 사용 모델은 `LLM_MODEL` (기본값 `gpt-4o-mini`) 로 조절한다.
+- `.env` 의 `GEMINI_API_KEY` 에 키를 입력하면 페르소나 페이지에서 **실제 Google Gemini API**(`generativelanguage.googleapis.com/v1beta`) 를 호출한다.
+- 비워두거나 5xx/네트워크 실패 시 백엔드가 **결정적(mock) 응답**으로 폴백한다. 기능 시연 및 자동 테스트는 mock 만으로도 가능하다.
+- 사용 모델은 `LLM_MODEL` (기본값 `gemini-2.0-flash`, docker-compose는 `gemini-2.5-flash` 로 오버라이드) 로 조절한다.
 
 ## 주요 명령
 
@@ -166,7 +166,7 @@ docker compose exec db psql -U exp -d expcalendar -c "select count(*) from users
 
 ## 구현 범위 (MVP)
 
-본 저장소는 SRS v1.2 의 다음 범위를 MVP 로 구현한다.
+본 저장소는 SRS v1.4 의 다음 범위를 MVP 로 구현한다.
 
 - **Part A (인증)**: dev-login + Google OAuth(선택) + JWT access/refresh.
 - **Part B (게임 엔진)**: 일정 완료에 따른 EXP / 포인트 산정, 레벨업.
