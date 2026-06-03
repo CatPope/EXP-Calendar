@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+vendor/
+
+# Build output
+frontend/.next/
+frontend/out/
+backend/bin/
+backend/server
+backend/server.exe
+backend/tmp/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.pem
+
+# IDE
+.vscode/
+.idea/
+.vs/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+coverage/
+*.cover
+*.out
+
+# Logs
+*.log
+npm-debug.log*
+
+# PWA
+sw.js
+workbox-*.js
+
+# OMC
+**/.omc/

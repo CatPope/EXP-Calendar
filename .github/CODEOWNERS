@@ -1,0 +1,12 @@
+# EXP Calendar — 코드 소유권
+# Part별 담당자 지정 (GitHub username으로 교체 필요)
+
+# 인프라 (정다우)
+/docker-compose*.yml    @dawoo
+/nginx/                 @dawoo
+/.github/workflows/     @dawoo
+/monitoring/            @dawoo
+
+# 개발 (신강민)
+/frontend/              @kangmin
+/backend/               @kangmin
