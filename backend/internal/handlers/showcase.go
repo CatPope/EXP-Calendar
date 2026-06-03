@@ -28,6 +28,8 @@ type recommendationRow struct {
 	Level         int       `json:"level"`
 	EquippedTitle any       `json:"equipped_title"`
 	CharacterSkin string    `json:"character_skin"`
+	PersonaName   string    `json:"persona_name"`
+	StatusMessage string    `json:"status_message"`
 }
 
 func (h *ShowcaseHandler) Recommendations(c *gin.Context) {
@@ -59,6 +61,8 @@ func (h *ShowcaseHandler) Recommendations(c *gin.Context) {
 			Level:         u.Level,
 			EquippedTitle: eq,
 			CharacterSkin: u.CharacterSkin,
+			PersonaName:   u.PersonaName,
+			StatusMessage: u.StatusMessage,
 		})
 	}
 	Respond(c, http.StatusOK, out)
@@ -73,6 +77,8 @@ type showcaseProfileResponse struct {
 	DisplayedTitles     []*models.Title `json:"displayed_titles"`
 	PersonaShowcaseText string          `json:"persona_showcase_text"`
 	PersonaLLMOutput    string          `json:"persona_llm_output"`
+	PersonaName         string          `json:"persona_name"`
+	StatusMessage       string          `json:"status_message"`
 	CharacterSkin       string          `json:"character_skin"`
 	Grass               map[string]int  `json:"grass"`
 }
@@ -128,6 +134,8 @@ func (h *ShowcaseHandler) Get(c *gin.Context) {
 		DisplayedTitles:     displayed,
 		PersonaShowcaseText: u.PersonaShowcaseText,
 		PersonaLLMOutput:    u.PersonaLLMOutput,
+		PersonaName:         u.PersonaName,
+		StatusMessage:       u.StatusMessage,
 		CharacterSkin:       u.CharacterSkin,
 		Grass:               grass,
 	})

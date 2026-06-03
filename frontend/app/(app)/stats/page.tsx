@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { BarChart3, Flame, Trophy, TrendingUp } from "lucide-react";
+import { BarChart3, Flame, Trophy, TrendingUp, Pencil } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import GrassGraph from "@/components/GrassGraph";
-import { Api } from "@/lib/api";
+import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import { useT } from "@/lib/i18n";
@@ -34,7 +34,39 @@ const PERIODS: { key: "week" | "month" | "year"; labelKey: string }[] = [
 export default function StatsPage() {
   const t = useT();
   const user = useAppStore((s) => s.user);
+  const setUser = useAppStore((s) => s.setUser);
+  const pushToast = useAppStore((s) => s.pushToast);
   const [period, setPeriod] = useState<"week" | "month" | "year">("week");
+
+  // Status message editor state
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [statusDraft, setStatusDraft] = useState("");
+  const [statusBusy, setStatusBusy] = useState(false);
+
+  function openStatusEditor() {
+    setStatusDraft(user?.status_message ?? "");
+    setEditingStatus(true);
+  }
+
+  function cancelStatusEdit() {
+    setEditingStatus(false);
+    setStatusDraft("");
+  }
+
+  async function saveStatus() {
+    if (statusBusy) return;
+    setStatusBusy(true);
+    try {
+      const updated = await Api.setStatusMessage(statusDraft.trim());
+      setUser(updated);
+      pushToast("success", t("insights.statusSaveSuccess"));
+      setEditingStatus(false);
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    } finally {
+      setStatusBusy(false);
+    }
+  }
 
   const {
     data: summary,
@@ -131,6 +163,63 @@ export default function StatsPage() {
         )}
       </div>
 
+      {/* STATUS MESSAGE EDITOR */}
+      <div className="card space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-text-2">
+            {t("insights.statusMessageLabel")}
+          </span>
+          {!editingStatus && (
+            <button
+              onClick={openStatusEditor}
+              className="inline-flex items-center gap-1 text-xs text-accent hover:opacity-80"
+            >
+              <Pencil className="h-3 w-3" />
+              {t("insights.editStatus")}
+            </button>
+          )}
+        </div>
+
+        {editingStatus ? (
+          <div className="space-y-2">
+            <textarea
+              value={statusDraft}
+              onChange={(e) => setStatusDraft(e.target.value.slice(0, 200))}
+              placeholder={t("insights.statusPlaceholder")}
+              rows={3}
+              className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm text-text-1 placeholder:text-text-2 resize-none focus:outline-none focus:border-accent"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-text-2">
+                {t("insights.statusCounter", { n: statusDraft.length })}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={cancelStatusEdit}
+                  disabled={statusBusy}
+                  className="text-xs rounded-md px-3 py-1 bg-surface-2 text-text-2 hover:bg-border disabled:opacity-50"
+                >
+                  {t("insights.cancel")}
+                </button>
+                <button
+                  onClick={saveStatus}
+                  disabled={statusBusy}
+                  className="text-xs rounded-md px-3 py-1 bg-accent text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {statusBusy ? t("insights.saving") : t("insights.save")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-text-1 min-h-[1.5rem]">
+            {user?.status_message || (
+              <span className="text-text-2 italic">{t("insights.statusPlaceholder")}</span>
+            )}
+          </p>
+        )}
+      </div>
+
       {/* RATING GAUGE */}
       <div className="card space-y-3">
         {summaryError ? (
@@ -149,12 +238,14 @@ export default function StatsPage() {
               <div className="flex-1">
                 <p className="text-sm text-text-2">{t("insights.successRate")}</p>
                 <p className="text-2xl font-semibold text-gold">{successPct}%</p>
-                <p className="text-xs text-text-2 mt-1">
-                  {t("insights.gradeHint")}
-                </p>
+                {typeof summary.percentile === "number" && (
+                  <p className="text-xs text-accent font-semibold mt-0.5">
+                    {t("insights.topPercentile", { n: summary.percentile })}
+                  </p>
+                )}
               </div>
             </div>
-            {/* 5-segment bar */}
+            {/* 5-segment grade bar */}
             <div className="flex gap-1.5">
               {GRADES.map((g, i) => (
                 <div key={g} className="flex-1 flex flex-col items-center gap-1">
@@ -173,6 +264,32 @@ export default function StatsPage() {
                 </div>
               ))}
             </div>
+            {/* Next grade progress */}
+            {summary.next_grade ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-text-2">
+                  <span>
+                    {t("insights.toNextGrade", {
+                      grade: summary.next_grade,
+                      n: Math.max(0, 100 - summary.next_grade_pct),
+                    })}
+                  </span>
+                  <span className="text-accent font-semibold">
+                    {summary.next_grade_pct}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-surface-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-500"
+                    style={{ width: `${Math.min(100, summary.next_grade_pct)}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-gold font-semibold">
+                {t("insights.maxGrade")}
+              </p>
+            )}
           </>
         ) : null}
       </div>

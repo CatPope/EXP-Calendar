@@ -94,10 +94,10 @@ func (h *ShopHandler) Purchase(c *gin.Context) {
 			return
 		}
 	}
-	// Side-effect: 등급 하락 방어권 (DEFENSE) clears the equipped title's penalty
-	// modifier (FR-TITLE-04 recovery via defense item, DC-07).
+	// Side-effect: 등급 하락 방어권 (DEFENSE) adds one ticket to inventory.
+	// The ticket is consumed later via POST /api/titles/use-defense (DC-07).
 	if it.Category == "DEFENSE" {
-		if _, err := h.Titles.ClearNegativeModifierTx(ctx, tx, uid); err != nil {
+		if _, err := tx.Exec(ctx, `UPDATE users SET defense_tickets=defense_tickets+1 WHERE id=$1`, uid); err != nil {
 			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 			return
 		}

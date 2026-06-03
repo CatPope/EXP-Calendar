@@ -38,8 +38,15 @@ export default function HUD() {
             {user.level}
           </div>
           <div className="text-sm">
-            <div className="font-semibold text-text-1">{user.display_name}</div>
+            <div className="font-semibold text-text-1">
+              {user.persona_name || user.display_name}
+            </div>
             <div className="text-xs text-text-2">Lv. {user.level}</div>
+            {user.status_message && (
+              <div className="text-xs text-text-2 max-w-[140px] truncate opacity-70">
+                {user.status_message}
+              </div>
+            )}
           </div>
         </div>
 

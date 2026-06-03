@@ -30,10 +30,16 @@ export interface User {
   account_status: string;
   persona_character_type: CharacterType | string;
   persona_definition: string;
+  persona_name: string;
+  persona_tone: string;
+  persona_history: string;
+  persona_thoughts: string;
+  status_message: string;
   persona_tokens: number;
   character_skin: string;
   summon_tickets: number;
   pity_counter: number;
+  defense_tickets: number;
   tendency?: Tendency | string;
   equipped_title: Title | null;
 }
@@ -120,10 +126,23 @@ export interface ShowcaseDetail {
   rating_grade: string;
   equipped_title: Title | null;
   displayed_titles: Title[];
+  persona_name: string;
+  status_message: string;
   persona_showcase_text: string;
   persona_llm_output: string;
   character_skin: string;
   grass: Record<string, number>;
+}
+
+export interface TitleCatalogEntry {
+  title: Title;
+  owned: boolean;
+  is_equipped: boolean;
+  is_displayed: boolean;
+  negative_modifier: string | null;
+  condition_kind: string;
+  progress_current: number;
+  progress_threshold: number;
 }
 
 export interface AuthResponse {
@@ -149,6 +168,9 @@ export interface StatsSummary {
   rating_grade: string;
   current_streak: number;
   longest_streak: number;
+  percentile: number;
+  next_grade: string;
+  next_grade_pct: number;
 }
 
 export interface SeriesPoint {

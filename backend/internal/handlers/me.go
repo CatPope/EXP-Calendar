@@ -36,6 +36,12 @@ type meResponse struct {
 	AccountStatus        string `json:"account_status"`
 	PersonaCharacterType string `json:"persona_character_type"`
 	PersonaDefinition    string `json:"persona_definition"`
+	PersonaName          string `json:"persona_name"`
+	PersonaTone          string `json:"persona_tone"`
+	PersonaHistory       string `json:"persona_history"`
+	PersonaThoughts      string `json:"persona_thoughts"`
+	StatusMessage        string `json:"status_message"`
+	DefenseTickets       int    `json:"defense_tickets"`
 	PersonaTokens        int    `json:"persona_tokens"`
 	CharacterSkin        string `json:"character_skin"`
 	SummonTickets        int    `json:"summon_tickets"`
@@ -80,6 +86,12 @@ func (h *MeHandler) Get(c *gin.Context) {
 		AccountStatus:        u.AccountStatus,
 		PersonaCharacterType: u.PersonaCharacterType,
 		PersonaDefinition:    u.PersonaDefinition,
+		PersonaName:          u.PersonaName,
+		PersonaTone:          u.PersonaTone,
+		PersonaHistory:       u.PersonaHistory,
+		PersonaThoughts:      u.PersonaThoughts,
+		StatusMessage:        u.StatusMessage,
+		DefenseTickets:       u.DefenseTickets,
 		PersonaTokens:        u.PersonaTokens,
 		CharacterSkin:        u.CharacterSkin,
 		SummonTickets:        u.SummonTickets,
@@ -151,6 +163,38 @@ func (h *MeHandler) SetCharacter(c *gin.Context) {
 	Respond(c, http.StatusOK, okResponse{OK: true})
 }
 
+// buildMeResponse constructs a meResponse from a fresh user record.
+// Equipped-title lookup is skipped (returns nil) to keep this helper lightweight;
+// callers that need the title should use Get instead.
+func buildMeResponse(u *models.User) meResponse {
+	return meResponse{
+		ID:                   u.ID,
+		Email:                u.Email,
+		DisplayName:          u.DisplayName,
+		Level:                u.Level,
+		TotalExp:             u.TotalExp,
+		ExpToNextLevel:       game.ExpToNextLevel(u.Level, u.TotalExp),
+		CurrentPoints:        u.CurrentPoints,
+		DailyPointsEarned:    u.DailyPointsEarned,
+		DailyPointsCap:       game.DailyPointsCap(),
+		AccountStatus:        u.AccountStatus,
+		PersonaCharacterType: u.PersonaCharacterType,
+		PersonaDefinition:    u.PersonaDefinition,
+		PersonaName:          u.PersonaName,
+		PersonaTone:          u.PersonaTone,
+		PersonaHistory:       u.PersonaHistory,
+		PersonaThoughts:      u.PersonaThoughts,
+		StatusMessage:        u.StatusMessage,
+		DefenseTickets:       u.DefenseTickets,
+		PersonaTokens:        u.PersonaTokens,
+		CharacterSkin:        u.CharacterSkin,
+		SummonTickets:        u.SummonTickets,
+		PityCounter:          u.PityCounter,
+		EquippedTitle:        nil,
+		Tendency:             u.Tendency,
+	}
+}
+
 type onboardingReq struct {
 	Tendency string `json:"tendency"`
 }
@@ -183,4 +227,84 @@ func (h *MeHandler) Onboarding(c *gin.Context) {
 		return
 	}
 	Respond(c, http.StatusOK, okResponse{OK: true})
+}
+
+type setPersonaReq struct {
+	PersonaName     *string `json:"persona_name"`
+	PersonaTone     *string `json:"persona_tone"`
+	PersonaHistory  *string `json:"persona_history"`
+	PersonaThoughts *string `json:"persona_thoughts"`
+}
+
+// SetPersona partially updates the structured persona fields (FREE — no token cost).
+// Only non-null fields in the request body are written. Returns the full updated user.
+func (h *MeHandler) SetPersona(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *setPersonaReq) error {
+		if r.PersonaName != nil && len([]rune(*r.PersonaName)) > 16 {
+			return errors.New("persona_name max 16 characters")
+		}
+		if r.PersonaTone != nil && len([]rune(*r.PersonaTone)) > 60 {
+			return errors.New("persona_tone max 60 characters")
+		}
+		if r.PersonaHistory != nil && len([]rune(*r.PersonaHistory)) > 300 {
+			return errors.New("persona_history max 300 characters")
+		}
+		if r.PersonaThoughts != nil && len([]rune(*r.PersonaThoughts)) > 200 {
+			return errors.New("persona_thoughts max 200 characters")
+		}
+		return nil
+	})
+	if !ok {
+		return
+	}
+	if err := h.Users.UpdatePersonaFields(c.Request.Context(), uid,
+		req.PersonaName, req.PersonaTone, req.PersonaHistory, req.PersonaThoughts); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	u, err := h.Users.GetByID(c.Request.Context(), uid)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	Respond(c, http.StatusOK, buildMeResponse(u))
+}
+
+type setStatusMessageReq struct {
+	StatusMessage string `json:"status_message"`
+}
+
+// SetStatusMessage writes the user's status message (may be empty; max 200 runes).
+// Returns the full updated user.
+func (h *MeHandler) SetStatusMessage(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *setStatusMessageReq) error {
+		r.StatusMessage = strings.TrimSpace(r.StatusMessage)
+		if len([]rune(r.StatusMessage)) > 200 {
+			return errors.New("status_message max 200 characters")
+		}
+		return nil
+	})
+	if !ok {
+		return
+	}
+	if err := h.Users.SetStatusMessage(c.Request.Context(), uid, req.StatusMessage); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	u, err := h.Users.GetByID(c.Request.Context(), uid)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	Respond(c, http.StatusOK, buildMeResponse(u))
 }

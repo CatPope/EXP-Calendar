@@ -63,7 +63,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 	schedH := handlers.NewSchedulesHandler(pool, users, schedules, titles, quests, rewards, stats)
 	questsH := handlers.NewQuestsHandler(pool, quests, users, schedules, rewards)
 	shopH := handlers.NewShopHandler(pool, shop, users, titles)
-	titlesH := handlers.NewTitlesHandler(titles)
+	titlesH := handlers.NewTitlesHandler(pool, titles, stats, rewards)
 	personaH := handlers.NewPersonaHandler(llmClient, users, titles)
 	showcaseH := handlers.NewShowcaseHandler(users, titles, rewards, quests)
 	statsH := handlers.NewStatsHandler(rewards, stats)
@@ -97,6 +97,8 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.POST("/me/onboarding", meH.Onboarding)
 		authed.PATCH("/me/character", meH.SetCharacter)
 		authed.PATCH("/me/profile", meH.SetProfile)
+		authed.PATCH("/me/persona", meH.SetPersona)       // [v1.4] 구조화 페르소나 무료 편집
+		authed.PATCH("/me/status", meH.SetStatusMessage)  // [v1.4] 상태 메시지(대사) 편집
 		authed.GET("/me/export", settingsH.Export)
 		authed.POST("/me/reset", settingsH.Reset)
 
@@ -130,7 +132,9 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 
 		// titles
 		authed.GET("/titles/me", titlesH.ListMine)
+		authed.GET("/titles/all", titlesH.ListAll) // [v1.4] 전체 칭호(보유+잠금) + 진행도
 		authed.PATCH("/titles/:id/equip", titlesH.Equip)
+		authed.POST("/titles/use-defense", titlesH.UseDefense) // [v1.4] 방어권으로 페널티 복구
 
 		// persona
 		authed.POST("/persona/generate", personaH.Generate)

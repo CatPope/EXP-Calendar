@@ -6,6 +6,7 @@ import { play } from "./locales/play";
 import { character } from "./locales/character";
 import { insights } from "./locales/insights";
 import { core } from "./locales/core";
+import { identity } from "./locales/identity";
 
 // 네임스페이스 등록. 키는 "<namespace>.<localKey>" 형태로 전역화된다.
 const NAMESPACES: Record<string, NamespaceDict> = {
@@ -14,7 +15,8 @@ const NAMESPACES: Record<string, NamespaceDict> = {
   play,
   character,
   insights,
-  core
+  core,
+  identity
 };
 
 type Messages = Record<Locale, Record<string, string>>;

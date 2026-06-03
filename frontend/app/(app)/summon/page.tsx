@@ -337,6 +337,9 @@ export default function SummonPage() {
         <div className="flex items-center gap-2">
           <Star className="h-4 w-4 text-gold" />
           <h2 className="text-sm font-semibold text-text-1">{t("character.collection")}</h2>
+          <span className="ml-auto text-[10px] text-text-2">
+            {t("character.equipChangeHint")}
+          </span>
         </div>
 
         {colError && (

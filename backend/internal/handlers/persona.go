@@ -3,12 +3,38 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/expcalendar/backend/internal/llm"
 	"github.com/expcalendar/backend/internal/middleware"
+	"github.com/expcalendar/backend/internal/models"
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
 )
+
+// buildPersonaDefinition composes a definition string from the structured
+// persona fields when available, falling back to the legacy persona_definition.
+// The composed form is: "{name}\n{tone}\n{history}\n{thoughts}" (parts omitted
+// when empty, joined with newlines, trimmed).
+func buildPersonaDefinition(u *models.User) string {
+	parts := []string{}
+	if u.PersonaName != "" {
+		parts = append(parts, u.PersonaName)
+	}
+	if u.PersonaTone != "" {
+		parts = append(parts, u.PersonaTone)
+	}
+	if u.PersonaHistory != "" {
+		parts = append(parts, u.PersonaHistory)
+	}
+	if u.PersonaThoughts != "" {
+		parts = append(parts, u.PersonaThoughts)
+	}
+	if len(parts) > 0 {
+		return strings.TrimSpace(strings.Join(parts, "\n"))
+	}
+	return u.PersonaDefinition
+}
 
 type PersonaHandler struct {
 	LLM    *llm.Client
@@ -53,14 +79,18 @@ func (h *PersonaHandler) Generate(c *gin.Context) {
 		return
 	}
 
-	// Priority: explicit preview definition → stored definition → legacy character_type.
+	// Priority: explicit preview definition → structured fields → legacy persona_definition.
 	def := req.Definition
 	if def == "" {
-		def = u.PersonaDefinition
+		def = buildPersonaDefinition(u)
 	}
+	// character_type: explicit hint → stored → persona_name (structured) → "default".
 	ct := req.CharacterType
 	if ct == "" {
 		ct = u.PersonaCharacterType
+	}
+	if ct == "" && u.PersonaName != "" {
+		ct = u.PersonaName
 	}
 	if ct == "" {
 		ct = "default"
@@ -116,11 +146,14 @@ func (h *PersonaHandler) Showcase(c *gin.Context) {
 		return
 	}
 
-	// Showcase ALWAYS uses the stored definition / character_type, ignoring any
-	// client-side hint. This is the monetization boundary: only paid setups
-	// produce public output.
-	def := u.PersonaDefinition
+	// Showcase ALWAYS uses the stored persona (structured fields preferred, then
+	// legacy definition), ignoring any client-side hint. This is the monetization
+	// boundary: only paid setups produce public output.
+	def := buildPersonaDefinition(u)
 	ct := u.PersonaCharacterType
+	if ct == "" && u.PersonaName != "" {
+		ct = u.PersonaName
+	}
 	if ct == "" {
 		ct = "default"
 	}

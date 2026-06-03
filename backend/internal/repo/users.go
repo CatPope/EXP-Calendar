@@ -20,6 +20,7 @@ const userSelect = `SELECT id, email, display_name, google_sub, account_status, 
 	tendency, persona_character_type, persona_definition, persona_tokens,
 	persona_showcase_text, persona_llm_output, character_skin,
 	summon_tickets, pity_counter,
+	persona_name, persona_tone, persona_history, persona_thoughts, status_message, defense_tickets,
 	created_at, updated_at FROM users`
 
 func scanUser(row pgx.Row) (*models.User, error) {
@@ -29,6 +30,7 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.Tendency, &u.PersonaCharacterType, &u.PersonaDefinition, &u.PersonaTokens,
 		&u.PersonaShowcaseText, &u.PersonaLLMOutput, &u.CharacterSkin,
 		&u.SummonTickets, &u.PityCounter,
+		&u.PersonaName, &u.PersonaTone, &u.PersonaHistory, &u.PersonaThoughts, &u.StatusMessage, &u.DefenseTickets,
 		&u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
@@ -105,6 +107,66 @@ func (r *UserRepo) SetPersonaCharacterType(ctx context.Context, id uuid.UUID, ch
 func (r *UserRepo) SetPersonaShowcase(ctx context.Context, id uuid.UUID, showcaseText, llmOutput string) error {
 	_, err := r.Pool.Exec(ctx, `UPDATE users SET persona_showcase_text=$1, persona_llm_output=$2, updated_at=now() WHERE id=$3`,
 		showcaseText, llmOutput, id)
+	return err
+}
+
+// UpdatePersonaFields performs a partial update of the structured persona fields.
+// Only non-nil pointer arguments are written. persona_definition is kept coherent
+// by composing it from the resulting tone/history/thoughts values.
+func (r *UserRepo) UpdatePersonaFields(ctx context.Context, id uuid.UUID, name, tone, history, thoughts *string) error {
+	// Build dynamic SET clause — only include columns the caller passed.
+	sets := []string{}
+	args := []any{}
+	argIdx := 1
+
+	if name != nil {
+		sets = append(sets, "persona_name=$"+itoa(argIdx))
+		args = append(args, *name)
+		argIdx++
+	}
+	if tone != nil {
+		sets = append(sets, "persona_tone=$"+itoa(argIdx))
+		args = append(args, *tone)
+		argIdx++
+	}
+	if history != nil {
+		sets = append(sets, "persona_history=$"+itoa(argIdx))
+		args = append(args, *history)
+		argIdx++
+	}
+	if thoughts != nil {
+		sets = append(sets, "persona_thoughts=$"+itoa(argIdx))
+		args = append(args, *thoughts)
+		argIdx++
+	}
+
+	if len(sets) == 0 {
+		return nil // nothing to update
+	}
+
+	// Also keep persona_definition in sync so existing LLM/showcase code has content.
+	// We do this via a sub-select to compose from the resulting stored values.
+	sets = append(sets,
+		"persona_definition = trim(both from concat_ws(E'\\n', persona_name, persona_tone, persona_history, persona_thoughts))")
+	sets = append(sets, "updated_at=now()")
+
+	query := "UPDATE users SET "
+	for i, s := range sets {
+		if i > 0 {
+			query += ", "
+		}
+		query += s
+	}
+	query += " WHERE id=$" + itoa(argIdx)
+	args = append(args, id)
+
+	_, err := r.Pool.Exec(ctx, query, args...)
+	return err
+}
+
+// SetStatusMessage overwrites the user's status_message (may be empty string).
+func (r *UserRepo) SetStatusMessage(ctx context.Context, id uuid.UUID, msg string) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE users SET status_message=$1, updated_at=now() WHERE id=$2`, msg, id)
 	return err
 }
 

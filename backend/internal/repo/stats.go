@@ -2,9 +2,11 @@ package repo
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/expcalendar/backend/internal/game"
+	"github.com/expcalendar/backend/internal/models"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -70,6 +72,90 @@ func (r *StatsRepo) Summary(ctx context.Context, userID uuid.UUID, currentStreak
 	rating = game.RatingGrade(completed, failed)
 	longest, err = r.LongestStreak(ctx, userID)
 	return
+}
+
+// RatingPercentile returns the caller's top-percentile rank among all users who have
+// at least one completed-or-failed schedule. Percentile = round(100 * count_of_users
+// with strictly_higher_success_rate / max(1, total_active_users)). Lower = better
+// (0 means the user has the highest or tied-highest rate).
+//
+// callerRate is the caller's own success rate (0..1), computed by the caller before
+// this is invoked so it can be passed directly as a SQL parameter ($1).
+//
+// The SQL aggregates schedules per user (COMPLETED vs OVERDUE counts), excludes
+// users with zero activity, and counts how many users have a rate strictly above $1:
+//
+//	WITH user_rates AS (
+//	  SELECT user_id,
+//	         COUNT(*) FILTER (WHERE status='COMPLETED') AS c,
+//	         COUNT(*) FILTER (WHERE status='OVERDUE')   AS f
+//	  FROM schedules
+//	  GROUP BY user_id
+//	  HAVING (COUNT(*) FILTER (WHERE status='COMPLETED') +
+//	          COUNT(*) FILTER (WHERE status='OVERDUE')) > 0
+//	)
+//	SELECT
+//	  COUNT(*) FILTER (WHERE CASE WHEN c+f=0 THEN 0 ELSE c/(c+f) END > $1),
+//	  COUNT(*)
+//	FROM user_rates
+func (r *StatsRepo) RatingPercentile(ctx context.Context, callerRate float64) (int, error) {
+	var above, total int
+	err := r.Pool.QueryRow(ctx, `
+		WITH user_rates AS (
+		  SELECT user_id,
+		         COUNT(*) FILTER (WHERE status='COMPLETED')::float8 AS c,
+		         COUNT(*) FILTER (WHERE status='OVERDUE')::float8   AS f
+		  FROM schedules
+		  GROUP BY user_id
+		  HAVING (COUNT(*) FILTER (WHERE status='COMPLETED') +
+		          COUNT(*) FILTER (WHERE status='OVERDUE')) > 0
+		)
+		SELECT
+		  COUNT(*) FILTER (WHERE CASE WHEN c+f=0 THEN 0 ELSE c/(c+f) END > $1),
+		  COUNT(*)
+		FROM user_rates
+	`, callerRate).Scan(&above, &total)
+	if err != nil {
+		return 0, err
+	}
+	if total <= 0 {
+		return 0, nil
+	}
+	pct := int(math.Round(float64(above) / float64(total) * 100))
+	return pct, nil
+}
+
+// SummaryFull returns a fully-populated StatsSummary including percentile and next-grade
+// progress (v1.4 fields). It reuses Summary for core counts then adds two extra queries.
+func (r *StatsRepo) SummaryFull(ctx context.Context, userID uuid.UUID, currentStreak int) (models.StatsSummary, error) {
+	completed, failed, rating, longest, err := r.Summary(ctx, userID, currentStreak)
+	if err != nil {
+		return models.StatsSummary{}, err
+	}
+
+	successRate := 0.0
+	if completed+failed > 0 {
+		successRate = float64(completed) / float64(completed+failed)
+	}
+
+	percentile, err := r.RatingPercentile(ctx, successRate)
+	if err != nil {
+		return models.StatsSummary{}, err
+	}
+
+	nextGrade, nextGradePct := game.NextGradeProgress(successRate)
+
+	return models.StatsSummary{
+		TotalCompleted: completed,
+		TotalFailed:    failed,
+		SuccessRate:    successRate,
+		RatingGrade:    rating,
+		CurrentStreak:  currentStreak,
+		LongestStreak:  longest,
+		Percentile:     percentile,
+		NextGrade:      nextGrade,
+		NextGradePct:   nextGradePct,
+	}, nil
 }
 
 // LongestStreak returns the longest run of consecutive KST days with >=1 completion.

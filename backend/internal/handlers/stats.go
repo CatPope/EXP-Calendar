@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/expcalendar/backend/internal/middleware"
-	"github.com/expcalendar/backend/internal/models"
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
 )
@@ -29,23 +28,12 @@ func (h *StatsHandler) Summary(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	current, _ := h.Rewards.ConsecutiveCompletionDays(ctx, uid, kstToday(), 120)
-	completed, failed, rating, longest, err := h.Stats.Summary(ctx, uid, current)
+	summary, err := h.Stats.SummaryFull(ctx, uid, current)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	rate := 0.0
-	if completed+failed > 0 {
-		rate = float64(completed) / float64(completed+failed)
-	}
-	Respond(c, http.StatusOK, models.StatsSummary{
-		TotalCompleted: completed,
-		TotalFailed:    failed,
-		SuccessRate:    rate,
-		RatingGrade:    rating,
-		CurrentStreak:  current,
-		LongestStreak:  longest,
-	})
+	Respond(c, http.StatusOK, summary)
 }
 
 func (h *StatsHandler) Grass(c *gin.Context) {

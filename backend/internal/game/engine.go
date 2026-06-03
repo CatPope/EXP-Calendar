@@ -128,6 +128,31 @@ type TitleProgress struct {
 	LegendaryChars int // 보유 LEGENDARY 캐릭터 종수
 }
 
+// ProgressFor returns (conditionKind, current, threshold) for a raw condition
+// string such as "STREAK:7". It maps each kind to the matching counter in p.
+// Unknown or unparseable conditions return ("", 0, 0).
+func (p TitleProgress) ProgressFor(condition string) (kind string, current, threshold int) {
+	cond, ok := ParseTitleCondition(condition)
+	if !ok {
+		return "", 0, 0
+	}
+	switch cond.Kind {
+	case "COMPLETE_COUNT":
+		return cond.Kind, p.CompleteCount, cond.Threshold
+	case "STREAK":
+		return cond.Kind, p.Streak, cond.Threshold
+	case "MORNING_COUNT":
+		return cond.Kind, p.MorningCount, cond.Threshold
+	case "HIGH_COUNT":
+		return cond.Kind, p.HighCount, cond.Threshold
+	case "OVERDUE_COUNT":
+		return cond.Kind, p.OverdueCount, cond.Threshold
+	case "LEGENDARY_CHAR":
+		return cond.Kind, p.LegendaryChars, cond.Threshold
+	}
+	return "", 0, 0
+}
+
 // Satisfies reports whether the condition is met by this progress.
 func (p TitleProgress) Satisfies(c TitleCond) bool {
 	switch c.Kind {
@@ -262,3 +287,101 @@ func RatingGrade(completed, failed int) string {
 		return "D"
 	}
 }
+
+// NextGrade returns the grade immediately above the given one.
+// D→C→B→A→S. At S (maximum) it returns "" to signal no higher grade.
+func NextGrade(grade string) string {
+	switch grade {
+	case "D":
+		return "C"
+	case "C":
+		return "B"
+	case "B":
+		return "A"
+	case "A":
+		return "S"
+	default: // "S" or unknown
+		return ""
+	}
+}
+
+// gradeThresholds holds the lower-bound success rate (0..1) for each grade.
+// Band boundaries (inclusive lower, exclusive upper):
+//
+//	D: [0.00, 0.50)  — threshold for D is 0.00
+//	C: [0.50, 0.70)  — threshold for C is 0.50
+//	B: [0.70, 0.85)  — threshold for B is 0.70
+//	A: [0.85, 0.95)  — threshold for A is 0.85
+//	S: [0.95, 1.00]  — threshold for S is 0.95
+var gradeLower = map[string]float64{
+	"D": 0.00,
+	"C": 0.50,
+	"B": 0.70,
+	"A": 0.85,
+	"S": 0.95,
+}
+
+// gradeUpper is the lower bound of the *next* grade (exclusive upper of current).
+var gradeUpper = map[string]float64{
+	"D": 0.50,
+	"C": 0.70,
+	"B": 0.85,
+	"A": 0.95,
+	"S": 1.00,
+}
+
+// NextGradeProgress returns the next grade name and progress percentage (0..100)
+// through the current grade band toward that next grade.
+//
+// successRate is in [0.0, 1.0] (same scale as RatingGrade uses internally).
+// At grade S (already maximum), returns ("", 100).
+//
+// Example: successRate=0.80 → grade B (band 0.70..0.85), progress = (0.80-0.70)/(0.85-0.70)
+// = 0.10/0.15 = 66.7% → 67, nextGrade = "A".
+func NextGradeProgress(successRate float64) (nextGrade string, pct int) {
+	// Clamp to [0,1].
+	if successRate < 0 {
+		successRate = 0
+	}
+	if successRate > 1 {
+		successRate = 1
+	}
+
+	// Determine current grade from the rate.
+	var currentGrade string
+	switch {
+	case successRate >= 0.95:
+		currentGrade = "S"
+	case successRate >= 0.85:
+		currentGrade = "A"
+	case successRate >= 0.70:
+		currentGrade = "B"
+	case successRate >= 0.50:
+		currentGrade = "C"
+	default:
+		currentGrade = "D"
+	}
+
+	next := NextGrade(currentGrade)
+	if next == "" {
+		// Already at S — no next grade.
+		return "", 100
+	}
+
+	lower := gradeLower[currentGrade]
+	upper := gradeUpper[currentGrade]
+	bandWidth := upper - lower
+	if bandWidth <= 0 {
+		return next, 100
+	}
+	progress := (successRate - lower) / bandWidth
+	pct = int(math.Round(progress * 100))
+	if pct < 0 {
+		pct = 0
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	return next, pct
+}
+

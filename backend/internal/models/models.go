@@ -22,12 +22,18 @@ type User struct {
 	Tendency              string    `json:"tendency"`
 	PersonaCharacterType  string    `json:"persona_character_type"`
 	PersonaDefinition     string    `json:"persona_definition"`
+	PersonaName           string    `json:"persona_name"`
+	PersonaTone           string    `json:"persona_tone"`
+	PersonaHistory        string    `json:"persona_history"`
+	PersonaThoughts       string    `json:"persona_thoughts"`
+	StatusMessage         string    `json:"status_message"`
 	PersonaTokens         int       `json:"persona_tokens"`
 	PersonaShowcaseText   string    `json:"persona_showcase_text"`
 	PersonaLLMOutput      string    `json:"persona_llm_output"`
 	CharacterSkin         string    `json:"character_skin"`
 	SummonTickets         int       `json:"summon_tickets"`
 	PityCounter           int       `json:"pity_counter"`
+	DefenseTickets        int       `json:"defense_tickets"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"-"`
 }
@@ -55,6 +61,19 @@ type Title struct {
 	IconURL     string    `json:"icon_url"`
 	Description string    `json:"description,omitempty"`
 	Condition   string    `json:"-"`
+}
+
+// TitleCatalogEntry is one row of GET /api/titles/all [v1.4]:
+// every master title with the caller's ownership + progress toward its condition.
+type TitleCatalogEntry struct {
+	Title             Title   `json:"title"`
+	Owned             bool    `json:"owned"`
+	IsEquipped        bool    `json:"is_equipped"`
+	IsDisplayed       bool    `json:"is_displayed"`
+	NegativeModifier  *string `json:"negative_modifier"`
+	ConditionKind     string  `json:"condition_kind"`
+	ProgressCurrent   int     `json:"progress_current"`
+	ProgressThreshold int     `json:"progress_threshold"`
 }
 
 type UserTitle struct {
@@ -162,12 +181,16 @@ type Settings struct {
 
 // StatsSummary is GET /api/stats/summary (rating + streaks for the caller).
 type StatsSummary struct {
-	TotalCompleted int    `json:"total_completed"`
-	TotalFailed    int    `json:"total_failed"`
+	TotalCompleted int     `json:"total_completed"`
+	TotalFailed    int     `json:"total_failed"`
 	SuccessRate    float64 `json:"success_rate"`
-	RatingGrade    string `json:"rating_grade"`
-	CurrentStreak  int    `json:"current_streak"`
-	LongestStreak  int    `json:"longest_streak"`
+	RatingGrade    string  `json:"rating_grade"`
+	CurrentStreak  int     `json:"current_streak"`
+	LongestStreak  int     `json:"longest_streak"`
+	// [v1.4] 등급 게이지: 상위 백분위(0~100, 낮을수록 상위)와 다음 등급까지 진행률(0~100).
+	Percentile     int     `json:"percentile"`
+	NextGrade      string  `json:"next_grade"`
+	NextGradePct   int     `json:"next_grade_pct"`
 }
 
 // ShowcaseSummary is one row of GET /api/showcase (recommendations).

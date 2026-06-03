@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   Calendar as CalendarIcon,
   ShoppingBag,
-  Crown,
   Sparkles,
   Users,
   LogOut,
@@ -31,8 +30,7 @@ const NAV = [
   { href: "/quests", labelKey: "navQuests", icon: ListChecks },
   { href: "/shop", labelKey: "navShop", icon: ShoppingBag },
   { href: "/summon", labelKey: "navSummon", icon: Gift },
-  { href: "/titles", labelKey: "navTitles", icon: Crown },
-  { href: "/persona", labelKey: "navPersona", icon: Sparkles },
+  { href: "/identity", labelKey: "navIdentity", icon: Sparkles },
   { href: "/stats", labelKey: "navStats", icon: BarChart3 },
   { href: "/showcase", labelKey: "navShowcase", icon: Users },
   { href: "/settings", labelKey: "settings", icon: Settings }

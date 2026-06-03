@@ -23,6 +23,7 @@ import type {
   Tendency,
   QuestCompleteResult,
   QuestClaimResult,
+  TitleCatalogEntry,
   StatsSummary,
   SeriesPoint,
   SummonInfo,
@@ -201,6 +202,29 @@ export const Api = {
       method: "PATCH",
       body: JSON.stringify({ display_name })
     }),
+  // [v1.4] 구조화 페르소나 자유 편집(무료). 부분 갱신 허용.
+  updatePersona: (fields: {
+    persona_name?: string;
+    persona_tone?: string;
+    persona_history?: string;
+    persona_thoughts?: string;
+  }) =>
+    apiFetch<User>("/api/me/persona", {
+      method: "PATCH",
+      body: JSON.stringify(fields)
+    }),
+  // [v1.4] 상태 메시지(대사) — 통계·등급 화면에서 편집, HUD/쇼케이스 노출.
+  setStatusMessage: (status_message: string) =>
+    apiFetch<User>("/api/me/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status_message })
+    }),
+  // [v1.4] 보유 방어권 1장 사용 → 장착/전시 칭호 페널티 복구.
+  redeemDefenseTicket: () =>
+    apiFetch<{ defense_tickets: number; cleared: boolean }>(
+      "/api/titles/use-defense",
+      { method: "POST" }
+    ),
 
   // schedules
   listSchedules: (from: string, to: string) =>
@@ -253,6 +277,7 @@ export const Api = {
 
   // titles
   myTitles: () => apiFetch<UserTitle[]>("/api/titles/me"),
+  allTitles: () => apiFetch<TitleCatalogEntry[]>("/api/titles/all"),
   patchTitle: (id: string, patch: { is_equipped?: boolean; is_displayed?: boolean }) =>
     apiFetch<UserTitle>(`/api/titles/${id}/equip`, {
       method: "PATCH",

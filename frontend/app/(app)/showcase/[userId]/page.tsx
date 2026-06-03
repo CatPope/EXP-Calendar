@@ -82,13 +82,27 @@ export default function ShowcaseDetailPage() {
             )}
           </div>
 
-          {/* 캐릭터: 큰 비주얼 */}
-          <div className="card flex justify-center py-6">
+          {/* 캐릭터: 큰 비주얼 + 인게임 이름 + 대사 */}
+          <div className="card flex flex-col items-center gap-3 py-6">
             <CharacterAvatar
               level={detail.level}
               skin={(detail.character_skin as SkinId) || undefined}
               size={320}
             />
+            {(detail.persona_name || detail.status_message) && (
+              <div className="text-center space-y-1">
+                {detail.persona_name && (
+                  <div className="text-base font-bold text-text-1">
+                    {detail.persona_name}
+                  </div>
+                )}
+                {detail.status_message && (
+                  <div className="text-sm text-text-2 italic max-w-xs">
+                    &ldquo;{detail.status_message}&rdquo;
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {detail.persona_showcase_text && (

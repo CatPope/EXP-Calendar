@@ -35,7 +35,19 @@ export const insights: NamespaceDict = {
     month1: "1월", month2: "2월", month3: "3월", month4: "4월",
     month5: "5월", month6: "6월", month7: "7월", month8: "8월",
     month9: "9월", month10: "10월", month11: "11월", month12: "12월",
-    trendSuccess: "완료", trendFail: "미달"
+    trendSuccess: "완료", trendFail: "미달",
+    characterName: "캐릭터 이름",
+    statusMessageLabel: "상태 메시지 (대사)",
+    editStatus: "대사 수정",
+    save: "저장",
+    cancel: "취소",
+    saving: "저장 중...",
+    statusPlaceholder: "나만의 한마디를 입력하세요 (최대 200자)",
+    statusCounter: "{n}/200",
+    topPercentile: "상위 {n}%",
+    toNextGrade: "다음 등급 {grade}까지 {n}% 남음",
+    maxGrade: "최고 등급 달성!",
+    statusSaveSuccess: "상태 메시지가 저장되었습니다."
   },
   en: {
     statsTitle: "Stats · Grade",
@@ -70,7 +82,19 @@ export const insights: NamespaceDict = {
     month1: "Jan", month2: "Feb", month3: "Mar", month4: "Apr",
     month5: "May", month6: "Jun", month7: "Jul", month8: "Aug",
     month9: "Sep", month10: "Oct", month11: "Nov", month12: "Dec",
-    trendSuccess: "Done", trendFail: "Missed"
+    trendSuccess: "Done", trendFail: "Missed",
+    characterName: "Character Name",
+    statusMessageLabel: "Status Message",
+    editStatus: "Edit Message",
+    save: "Save",
+    cancel: "Cancel",
+    saving: "Saving...",
+    statusPlaceholder: "Enter your personal one-liner (max 200 chars)",
+    statusCounter: "{n}/200",
+    topPercentile: "Top {n}%",
+    toNextGrade: "{n}% to next grade {grade}",
+    maxGrade: "Max grade achieved!",
+    statusSaveSuccess: "Status message saved."
   },
   ja: {
     statsTitle: "統計 · 等級",
@@ -105,6 +129,18 @@ export const insights: NamespaceDict = {
     month1: "1月", month2: "2月", month3: "3月", month4: "4月",
     month5: "5月", month6: "6月", month7: "7月", month8: "8月",
     month9: "9月", month10: "10月", month11: "11月", month12: "12月",
-    trendSuccess: "完了", trendFail: "未達"
+    trendSuccess: "完了", trendFail: "未達",
+    characterName: "キャラクター名",
+    statusMessageLabel: "ステータスメッセージ（セリフ）",
+    editStatus: "セリフ編集",
+    save: "保存",
+    cancel: "キャンセル",
+    saving: "保存中...",
+    statusPlaceholder: "ひとこと入力（最大200文字）",
+    statusCounter: "{n}/200",
+    topPercentile: "上位{n}%",
+    toNextGrade: "次の等級{grade}まであと{n}%",
+    maxGrade: "最高等級達成！",
+    statusSaveSuccess: "ステータスメッセージを保存しました。"
   }
 };
