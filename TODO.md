@@ -2,7 +2,7 @@
 
 > 작업할 항목 목록. 세부 구현은 담당자가 직접 결정한다.
 > 항목을 진행할 때는 본 파일을 함께 갱신한다 — 진행 중 `[~]`, 완료 `[x]`, 막히면 `[!]` + 사유 한 줄.
-> 권위 문서는 `docs/for_ai/planning/requirements_ieee830_v1.4.md`, 와이어프레임은 `docs/for_ai/planning/UXUI_1.4.pdf` (페이지 PNG: `docs/for_ai/planning/_uxui_pages_v1.4/`). 직전 v1.3 SRS·와이어프레임은 동결 보존(`requirements_ieee830_v1.3.md`, `Legacy/UXUI_v1.3.pdf`).
+> 권위 문서는 `docs/for_ai/planning/requirements_ieee830_v1.4.md`, 와이어프레임은 `docs/for_ai/planning/UXUI_v1.4.pdf` (페이지 PNG: `docs/for_ai/planning/_uxui_pages_v1.4/`). 직전 v1.3 SRS·와이어프레임은 동결 보존(`Legacy/requirements_ieee830_v1.3.md`, `Legacy/UXUI_v1.3.pdf`).
 
 ## A. UXUI 정합 — 프론트 전면 수정 (v1.4 기준)
 
@@ -55,6 +55,6 @@
 ## 공통 규칙
 
 - 작업 시작 전 `CLAUDE.md` 정독.
-- SRS v1.2(`Legacy/requirements_ieee830_v1.2.md`)·v1.3(`requirements_ieee830_v1.3.md`)은 동결 보존, **절대 수정 금지**. 현재 권위 문서는 v1.4. 권위 변경 필요 시 사용자에게 먼저 확인.
+- SRS v1.2(`Legacy/requirements_ieee830_v1.2.md`)·v1.3(`Legacy/requirements_ieee830_v1.3.md`)은 동결 보존, **절대 수정 금지**. 현재 권위 문서는 v1.4. 권위 변경 필요 시 사용자에게 먼저 확인.
 - 세부 결정은 담당자가 내리되, 본 TODO와 어긋나는 결정은 본 파일을 함께 수정해 기록한다.
 - PR 본문에 어떤 항목을 처리했는지 본 파일 체크박스 기준으로 보고한다.
