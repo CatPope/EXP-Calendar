@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/expcalendar/backend/internal/middleware"
@@ -38,7 +39,15 @@ func (h *ShowcaseHandler) Recommendations(c *gin.Context) {
 		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
 		return
 	}
-	users, err := h.Users.ListShowcaseUsers(c.Request.Context(), uid, 20)
+	// Optional ?q= filters by display name (FR-SOC-04 search); empty → top recommendations.
+	q := strings.TrimSpace(c.Query("q"))
+	var users []*models.User
+	var err error
+	if q != "" {
+		users, err = h.Users.SearchShowcaseUsers(c.Request.Context(), uid, q, 20)
+	} else {
+		users, err = h.Users.ListShowcaseUsers(c.Request.Context(), uid, 20)
+	}
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return

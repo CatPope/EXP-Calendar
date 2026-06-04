@@ -283,6 +283,30 @@ func (r *UserRepo) ListShowcaseUsers(ctx context.Context, excludeID uuid.UUID, l
 	return out, rows.Err()
 }
 
+// SearchShowcaseUsers returns up to N other ACTIVE users whose display_name
+// matches the query (case-insensitive substring), ordered by level (FR-SOC-04).
+func (r *UserRepo) SearchShowcaseUsers(ctx context.Context, excludeID uuid.UUID, query string, limit int) ([]*models.User, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := r.Pool.Query(ctx, userSelect+` WHERE id <> $1 AND account_status='ACTIVE'
+		AND display_name ILIKE '%' || $2 || '%'
+		ORDER BY level DESC, total_exp DESC LIMIT $3`, excludeID, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*models.User
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
 // ResetDailyPointsIfNeeded resets daily_points_earned to 0 if last-earned date isn't today.
 func (r *UserRepo) ResetDailyPointsIfNeeded(ctx context.Context, tx pgx.Tx, id uuid.UUID, today time.Time) error {
 	_, err := tx.Exec(ctx, `UPDATE users SET daily_points_earned=0, daily_points_earned_date=$1, updated_at=now()
