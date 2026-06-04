@@ -46,7 +46,7 @@ docker compose logs -f frontend
 docker compose down               # 데이터 유지
 docker compose down -v            # DB 볼륨 삭제
 
-# nginx 포함 프로필
+# nginx 포함 프로필 (.env 의 NEXT_PUBLIC_APP_MODE=prod 로 바꾼 뒤 빌드)
 docker compose --profile prod up -d --build
 
 # DB 접속
@@ -104,7 +104,7 @@ App Router 구조에서 **라우트 그룹 `(app)/`이 인증 경계**다. `(app
 
 ### Infra (루트)
 
-- `docker-compose.yml` — `DATABASE_URL`(컨테이너 내부 host=`db`)과 `NEXT_PUBLIC_API_BASE_URL`(브라우저 host=`localhost`)을 compose의 `environment:`에서 **명시적으로 덮어씀**. `.env`에 같은 키가 있어도 무시됨
+- `docker-compose.yml` — `DATABASE_URL`(컨테이너 내부 host=`db`)을 명시적으로 덮어씀. 프론트는 `NEXT_PUBLIC_APP_MODE`(`dev`|`prod`) 단일 플래그를 `.env`에서 받아 빌드 args/env로 전달하며, `frontend/lib/api.ts`가 모드로부터 `BASE_URL`을 파생한다 (dev → `http://localhost:8080`, prod → `""` 상대 경로). 별도 prod overlay 파일은 사용하지 않는다.
 - `nginx/nginx.conf` — `profile: prod`로만 기동. `:80`에서 `/api/`→backend, 나머지→frontend
 
 ## Design Decisions (변경 금지)

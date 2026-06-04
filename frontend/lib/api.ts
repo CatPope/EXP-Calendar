@@ -33,8 +33,12 @@ import type {
   Settings
 } from "./types";
 
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+// API base URL 은 NEXT_PUBLIC_APP_MODE 로부터 파생한다.
+// - dev: 브라우저가 :3000(프론트) → :8080(백엔드) 직접 호출
+// - prod: 같은 오리진의 /api/... 로 호출 → nginx 가 backend 로 프록시
+//         외부 호스트(터널/내부 IP) 자동 대응을 위해 상대 경로 사용
+const APP_MODE = process.env.NEXT_PUBLIC_APP_MODE || "dev";
+export const BASE_URL = APP_MODE === "prod" ? "" : "http://localhost:8080";
 
 export class ApiError extends Error {
   code: string;
