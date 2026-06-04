@@ -51,10 +51,10 @@ func (r *RewardRepo) GrassByDay(ctx context.Context, userID uuid.UUID, from, to 
 		     AND completed_at >= $2 AND completed_at < $3
 		   UNION ALL
 		   -- quest claims bucketed by KST date
-		   SELECT (created_at AT TIME ZONE 'Asia/Seoul')::date AS d
+		   SELECT (occurred_at AT TIME ZONE 'Asia/Seoul')::date AS d
 		   FROM reward_log
 		   WHERE user_id=$1 AND source='QUEST'
-		     AND created_at >= $2 AND created_at < $3
+		     AND occurred_at >= $2 AND occurred_at < $3
 		 ) activity
 		 GROUP BY d ORDER BY d`,
 		userID, from, to)
@@ -94,12 +94,12 @@ func (r *RewardRepo) SeriesByDay(ctx context.Context, userID uuid.UUID, from, to
 		   UNION ALL
 		   -- quest claims: each counts as 1 success, 0 fail
 		   SELECT
-		     (created_at AT TIME ZONE 'Asia/Seoul')::date AS d,
+		     (occurred_at AT TIME ZONE 'Asia/Seoul')::date AS d,
 		     1 AS success,
 		     0 AS fail
 		   FROM reward_log
 		   WHERE user_id=$1 AND source='QUEST'
-		     AND created_at >= $2 AND created_at < $3
+		     AND occurred_at >= $2 AND occurred_at < $3
 		 ) combined
 		 GROUP BY d ORDER BY d`,
 		userID, from, to)
