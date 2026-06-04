@@ -13,6 +13,8 @@ import {
   ListChecks,
   BarChart3,
   Gift,
+  PanelLeftClose,
+  PanelLeftOpen,
   X
 } from "lucide-react";
 import { Api, humanizeError } from "@/lib/api";
@@ -104,16 +106,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col">
       <HUD />
 
-      {/* dim overlay */}
+      {/* dim overlay — 모바일에서만 (데스크톱은 푸시 레이아웃이라 미사용) */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-40"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden
         />
       )}
 
-      {/* sidebar drawer (YouTube-style: 햄버거로 토글) */}
+      {/* 좌측 가장자리 토글 버튼 — 사이드바 모서리를 따라 이동(열기/닫기) */}
+      <button
+        type="button"
+        aria-label={sidebarOpen ? t("core.closeMenu") : t("common.openMenu")}
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className={`fixed top-20 z-[60] flex h-9 w-9 items-center justify-center rounded-r-lg border border-l-0 border-border bg-surface text-text-2 hover:text-text-1 hover:bg-surface-2 shadow-md transition-all duration-200 ${
+          sidebarOpen ? "left-64" : "left-0"
+        }`}
+      >
+        {sidebarOpen ? (
+          <PanelLeftClose className="h-5 w-5" />
+        ) : (
+          <PanelLeftOpen className="h-5 w-5" />
+        )}
+      </button>
+
+      {/* 사이드바 (데모 nav 참고: 기본 열림 · 데스크톱 푸시 · 모바일 드로어) */}
       <aside
         className={`fixed top-0 left-0 z-50 h-full w-64 bg-surface border-r border-border flex flex-col transition-transform duration-200 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
@@ -137,7 +155,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={href}
                 href={href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  // 데스크톱은 고정 사이드바라 유지, 모바일에서만 닫기.
+                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                    setSidebarOpen(false);
+                  }
+                }}
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
                   active
                     ? "bg-accent/20 text-accent border border-accent/40"
@@ -152,10 +175,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="p-3 border-t border-border space-y-1">
           <button
-            onClick={() => {
-              setSettingsOpen(true);
-              setSidebarOpen(false);
-            }}
+            onClick={() => setSettingsOpen(true)}
             className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-surface-2 hover:text-text-1"
           >
             <Settings className="h-4 w-4" />
@@ -171,14 +191,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* 본문 + 우측 고정 프로필 레일 (데모 app.jsx CharRail) */}
-      <div className="flex-1 w-full max-w-7xl mx-auto flex gap-4 lg:gap-6 p-4 md:p-6">
-        <main className="flex-1 min-w-0">{children}</main>
-        <aside className="hidden lg:block w-72 shrink-0">
-          <div className="sticky top-20">
-            <ProfileRail />
-          </div>
-        </aside>
+      {/* 본문 + 우측 고정 프로필 레일. 데스크톱은 사이드바만큼 우측으로 밀림. */}
+      <div
+        className={`flex-1 transition-[padding] duration-200 ${
+          sidebarOpen ? "lg:pl-64" : ""
+        }`}
+      >
+        <div className="w-full max-w-7xl mx-auto flex gap-4 lg:gap-6 p-4 md:p-6">
+          <main className="flex-1 min-w-0">{children}</main>
+          <aside className="hidden lg:block w-72 shrink-0">
+            <div className="sticky top-20">
+              <ProfileRail />
+            </div>
+          </aside>
+        </div>
       </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
