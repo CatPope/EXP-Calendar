@@ -6,8 +6,8 @@ import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import { useT } from "@/lib/i18n";
 import { Api } from "@/lib/api";
-import type { StatsSummary, Schedule } from "@/lib/types";
-import type { SkinId } from "@/lib/character";
+import type { StatsSummary, Schedule, GachaCharacter, OwnedCharacter } from "@/lib/types";
+import { skinById, type SkinId } from "@/lib/character";
 
 // 데모 app.jsx 의 CharRail(aside.a-rail)을 실제 데이터로 재현하는 우측 고정 프로필 레일.
 // 모든 (app) 화면에서 동일하게 노출된다 (lg 이상).
@@ -27,7 +27,21 @@ export default function ProfileRail() {
     []
   );
 
+  // 스킨 도감 카탈로그(sprite_key → 캐릭터 이름). 1회만 받아두고, 장착 변경은
+  // user.character_skin(=sprite_key)이 /me로 갱신되며 반응형으로 반영된다.
+  const { data: collection } = useAsyncData<{
+    catalog: GachaCharacter[];
+    owned: OwnedCharacter[];
+  }>(() => Api.summonCollection(), []);
+
   if (!user) return null;
+
+  // 장착 스킨 이름: 도감 캐릭터 이름 우선, 없으면 스프라이트 매니페스트 라벨.
+  const skinNameMap = new Map((collection?.catalog ?? []).map((c) => [c.sprite_key, c.name]));
+  const skin = user.character_skin;
+  const skinName = skin
+    ? skinNameMap.get(skin) || skinById(skin as SkinId).label
+    : "";
 
   const levelTotalExp = user.level * user.level * 100;
   const prevLevelExp = (user.level - 1) * (user.level - 1) * 100;
@@ -44,8 +58,6 @@ export default function ProfileRail() {
     .filter((s) => s.status === "PENDING" && new Date(s.due_date).getTime() >= now)
     .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())[0];
 
-  const name = user.persona_name || user.display_name;
-
   return (
     <div className="space-y-4">
       {/* 캐릭터 프로필 카드 */}
@@ -60,7 +72,10 @@ export default function ProfileRail() {
         </div>
 
         <div className="text-center">
-          <div className="font-semibold text-text-1">{name}</div>
+          <div className="font-semibold text-text-1">{user.display_name}</div>
+          {skinName && (
+            <div className="text-xs text-text-2 mt-0.5">{skinName}</div>
+          )}
         </div>
 
         <div className="flex flex-wrap justify-center gap-1.5">
