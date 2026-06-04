@@ -13,7 +13,9 @@ import { LogIn, Sparkles, UserPlus } from "lucide-react";
 
 type AuthMode = "login" | "signup";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_APP_MODE !== "prod";
+// 데모/쇼케이스 목적상 prod 모드에서도 dev-login 폼을 노출한다.
+// 실제 운영 배포 시에는 아래 가드를 복원하고 정식 OAuth/비밀번호 인증으로 교체할 것.
+// const DEV_MODE = process.env.NEXT_PUBLIC_APP_MODE !== "prod";
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
 
 declare global {
@@ -26,8 +28,8 @@ export default function LoginPage() {
   const router = useRouter();
   const t = useT();
   const setUser = useAppStore((s) => s.setUser);
-  const [email, setEmail] = useState("dev@example.com");
-  const [displayName, setDisplayName] = useState("Dev User");
+  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [mode, setMode] = useState<AuthMode>("login");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -139,8 +141,8 @@ export default function LoginPage() {
           </div>
         )}
 
-        {DEV_MODE && (
-          <form onSubmit={handleDevAuth} className="space-y-2 border-t border-border pt-4">
+        {/* 가드 제거: prod 모드에도 노출 (데모용). 원복 시 {DEV_MODE && ( ... )} 로 감쌀 것. */}
+        <form onSubmit={handleDevAuth} className="space-y-2 border-t border-border pt-4">
             <div className="text-xs text-text-2">
               {mode === "signup" ? t("common.devSignup") : t("common.devLogin")}
             </div>
@@ -148,7 +150,7 @@ export default function LoginPage() {
               className="input w-full"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="email"
+              placeholder={t("common.emailPlaceholder")}
               required
             />
             <input
@@ -179,7 +181,6 @@ export default function LoginPage() {
                 : t("common.switchToSignup")}
             </button>
           </form>
-        )}
       </div>
     </main>
   );
