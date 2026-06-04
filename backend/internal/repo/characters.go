@@ -108,8 +108,14 @@ func (r *CharacterRepo) OwnsCharacter(ctx context.Context, userID, characterID u
 
 // SetActive sets the user's equipped (active) character. Caller must verify ownership.
 func (r *CharacterRepo) SetActive(ctx context.Context, userID, characterID uuid.UUID) error {
+	// Also mirror the equipped character's sprite_key into users.character_skin so the
+	// avatar (HUD, profile rail, showcase) — which renders character_skin — reflects it.
 	_, err := r.Pool.Exec(ctx,
-		`UPDATE users SET active_character_id=$1, updated_at=now() WHERE id=$2`,
+		`UPDATE users
+		   SET active_character_id=$1,
+		       character_skin = COALESCE(NULLIF((SELECT sprite_key FROM characters WHERE id=$1), ''), character_skin),
+		       updated_at=now()
+		 WHERE id=$2`,
 		characterID, userID)
 	return err
 }
