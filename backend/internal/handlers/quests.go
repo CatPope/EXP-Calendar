@@ -177,14 +177,14 @@ func (h *QuestsHandler) Claim(c *gin.Context) {
 
 	// Helper: apply daily cap, update user balances, return actual granted amount.
 	grantPoints := func(gross int) (int, error) {
-		u, err := h.Users.GetByIDTx(ctx, tx, uid)
-		if err != nil {
+		var dailyPointsEarned int
+		if err := tx.QueryRow(ctx, "SELECT daily_points_earned FROM users WHERE id=$1 FOR UPDATE", uid).Scan(&dailyPointsEarned); err != nil {
 			return 0, err
 		}
-		gp, _ := game.ApplyDailyCap(u.DailyPointsEarned, gross)
+		gp, _ := game.ApplyDailyCap(dailyPointsEarned, gross)
 		if gp > 0 {
 			if _, err := tx.Exec(ctx,
-				`UPDATE users SET current_points=current_points+$1, daily_points_earned=daily_points_earned+$1, updated_at=now() WHERE id=$2`,
+				"UPDATE users SET current_points=current_points+$1, daily_points_earned=daily_points_earned+$1, updated_at=now() WHERE id=$2",
 				gp, uid); err != nil {
 				return 0, err
 			}
