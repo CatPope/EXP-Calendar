@@ -22,6 +22,7 @@ import { loadSettings } from "@/lib/settings";
 import { applyPalette, getStoredPalette } from "@/lib/palette";
 import { useT } from "@/lib/i18n";
 import HUD from "@/components/HUD";
+import ProfileRail from "@/components/ProfileRail";
 import SettingsModal from "@/components/SettingsModal";
 import Spinner from "@/components/common/Spinner";
 
@@ -170,9 +171,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 p-4 md:p-6 max-w-7xl mx-auto w-full">
-        {children}
-      </main>
+      {/* 본문 + 우측 고정 프로필 레일 (데모 app.jsx CharRail) */}
+      <div className="flex-1 w-full max-w-7xl mx-auto flex gap-4 lg:gap-6 p-4 md:p-6">
+        <main className="flex-1 min-w-0">{children}</main>
+        <aside className="hidden lg:block w-72 shrink-0">
+          <div className="sticky top-20">
+            <ProfileRail />
+          </div>
+        </aside>
+      </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
