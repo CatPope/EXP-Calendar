@@ -13,7 +13,7 @@ import { LogIn, Sparkles, UserPlus } from "lucide-react";
 
 type AuthMode = "login" | "signup";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+const DEV_MODE = (process.env.NEXT_PUBLIC_APP_MODE || "dev") === "dev";
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
 
 declare global {

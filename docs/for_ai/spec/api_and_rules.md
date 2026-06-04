@@ -407,6 +407,8 @@ Backend:
 - `ALLOWED_ORIGINS=http://localhost:3000`
 
 Frontend:
-- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`
+- `NEXT_PUBLIC_APP_MODE=dev` — 값: `dev` | `prod`. 단일 플래그가 dev/prod 분기 + API base URL 파생을 모두 결정한다.
+  - `dev`: 브라우저가 `:3000` → `:8080` 백엔드 직접 호출 + dev-login 폼 노출
+  - `prod`: 같은 오리진 `/api` 로 호출 → nginx 가 backend 프록시 + dev-login 폼 숨김
+  - `frontend/lib/api.ts` 가 `APP_MODE` 로부터 `BASE_URL` 을 파생. 별도 `NEXT_PUBLIC_API_BASE_URL` 변수는 사용하지 않는다.
 - `NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` (선택)
-- `NEXT_PUBLIC_DEV_MODE=true`
