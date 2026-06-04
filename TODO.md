@@ -37,7 +37,8 @@
 - [x] **통합 설정**(Part L): `user_settings` + GET/PATCH `/settings`, JSON 내보내기, 계정 초기화 (`settings.go`, 프론트 `settings/`)
 - [x] **통계·등급**(FR-STAT-03/05): `/stats/summary`(rating D~S·현재/최장 스트릭), 프론트 `stats/`
 - [x] **프론트 화면 4종**(UI-08/09/10/11): `quests`/`summon`/`stats`/`settings` + `api.ts`·`types.ts`·네비 갱신 (next build 통과)
-- [!] 후속: 실제 Web Push 발송(VAPID), GCal 양방향(V2), 다국어/다중테마(V2, UI만 노출)
+- [x] **실제 Web Push 발송**(FR-NOTI-01): `webpush-go` VAPID-signed 발송 + 키 자동생성 + `GET /api/notifications/vapid` + 프론트 구독(`lib/push.ts`)·서비스워커(`worker/index.js`)·설정 "알림 켜기" 버튼. 410/404 구독 자동정리 (2026-06-04)
+- [!] 후속: GCal 양방향(V2), 다국어/다중테마(V2, UI만 노출)
 
 ## E. v1.4 정합 — UXUI v1.4 반영 (2026-06-03)
 

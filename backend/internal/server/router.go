@@ -67,7 +67,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 	personaH := handlers.NewPersonaHandler(llmClient, users, titles)
 	showcaseH := handlers.NewShowcaseHandler(users, titles, rewards, quests)
 	statsH := handlers.NewStatsHandler(rewards, stats)
-	notifH := handlers.NewNotificationsHandler(push)
+	notifH := handlers.NewNotificationsHandler(push, cfg.VAPIDPublic)
 	summonH := handlers.NewSummonHandler(pool, users, characters)
 	settingsH := handlers.NewSettingsHandler(pool, settings, users)
 
@@ -151,6 +151,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.GET("/stats/summary", statsH.Summary)
 
 		// notifications
+		authed.GET("/notifications/vapid", notifH.Vapid)
 		authed.POST("/notifications/subscribe", notifH.Subscribe)
 	}
 

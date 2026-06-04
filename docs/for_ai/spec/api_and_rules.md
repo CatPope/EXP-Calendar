@@ -239,10 +239,13 @@ UserTitle:
 
 ## 9. Notifications
 
+### GET /api/notifications/vapid
+- res: `{ data: { public_key: "base64url" } }` ← 브라우저 PushManager 구독용 VAPID 공개키. 키 미설정 시 부팅마다 임시 키 생성.
+
 ### POST /api/notifications/subscribe
-- body: WebPushSubscription JSON `{ endpoint, keys: { p256dh, auth } }`
+- body: WebPushSubscription JSON `{ endpoint, keys: { p256dh, auth } }` (브라우저 `PushSubscription.toJSON()`)
 - res: `{ data: { ok: true } }`
-- 백그라운드 worker가 매분 일정 리마인더(사용자 `reminder_minutes` 전)와 OVERDUE 스윕(페널티 부착)을 수행한다. 실제 Web Push 발송은 VAPID 키 설정 시 활성(미설정 시 로그 no-op).
+- 백그라운드 worker가 매분 일정 리마인더(사용자 `reminder_minutes` 전)와 OVERDUE 스윕(페널티 부착)을 수행한다. **실제 Web Push 발송 구현됨**(VAPID-signed aes128gcm, `webpush-go`). 발송 실패 410/404 구독은 자동 삭제. `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` 미설정 시 부팅마다 임시 키 생성(프론트는 `/vapid`로 현재 키를 받아 구독).
 
 ## 10. Summon · Character Collection `[v1.3]` (FR-SUMMON-01~05)
 

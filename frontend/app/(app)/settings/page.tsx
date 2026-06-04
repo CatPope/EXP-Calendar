@@ -19,6 +19,7 @@ import { useAppStore } from "@/lib/store";
 import { clearTokens } from "@/lib/auth";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import { PALETTES, applyPalette, isPalette, type Palette as PaletteId } from "@/lib/palette";
+import { enablePush, type PushResult } from "@/lib/push";
 import { useT } from "@/lib/i18n";
 import { LOCALES, isLocale } from "@/lib/i18n/locale";
 import type { Settings } from "@/lib/types";
@@ -137,6 +138,24 @@ export default function SettingsPage() {
     if (!isLocale(lang)) return;
     setLocale(lang); // 즉시 화면 반영 + localStorage 캐시
     update({ language: lang }); // 서버 영구화
+  }
+
+  const [pushBusy, setPushBusy] = useState(false);
+  async function doEnablePush() {
+    setPushBusy(true);
+    try {
+      const r: PushResult = await enablePush();
+      const msgKey: Record<PushResult, string> = {
+        granted: "core.pushGranted",
+        denied: "core.pushDenied",
+        unsupported: "core.pushUnsupported",
+        "no-sw": "core.pushNoSw",
+        error: "core.pushError"
+      };
+      pushToast(r === "granted" ? "success" : "error", t(msgKey[r]));
+    } finally {
+      setPushBusy(false);
+    }
   }
 
   async function doExport() {
@@ -381,6 +400,18 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-accent" />
               <h2 className="font-semibold">{t("core.sectionNotif")}</h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+              <label className="text-sm text-text-1">{t("core.pushBrowser")}</label>
+              <button
+                type="button"
+                onClick={doEnablePush}
+                disabled={pushBusy}
+                className="text-xs rounded-md px-3 py-1.5 bg-accent text-white hover:bg-accent/80 disabled:opacity-50"
+              >
+                {t("core.pushEnable")}
+              </button>
             </div>
 
             <div className="flex items-center justify-between gap-3">

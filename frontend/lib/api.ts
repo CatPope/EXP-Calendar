@@ -354,5 +354,13 @@ export const Api = {
       body: JSON.stringify(patch)
     }),
   exportData: () => apiFetch<Record<string, unknown>>("/api/me/export"),
-  resetAccount: () => apiFetch<{ ok: true }>("/api/me/reset", { method: "POST" })
+  resetAccount: () => apiFetch<{ ok: true }>("/api/me/reset", { method: "POST" }),
+
+  // web push
+  vapidPublicKey: () => apiFetch<{ public_key: string }>("/api/notifications/vapid"),
+  subscribePush: (sub: unknown) =>
+    apiFetch<{ ok: true }>("/api/notifications/subscribe", {
+      method: "POST",
+      body: JSON.stringify(sub)
+    })
 };
