@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Sparkles, Crown, Shield, Info, Lock } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
-import CharacterAvatar from "@/components/CharacterAvatar";
-import TitleBadge from "@/components/TitleBadge";
+import CosmeticAvatar from "@/components/CosmeticAvatar";
+import { cosmeticById, ALL_COSMETIC_IDS } from "@/lib/cosmetics";
 import { Api, humanizeError } from "@/lib/api";
+import TitleBadge from "@/components/TitleBadge";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import { useT } from "@/lib/i18n";
@@ -62,6 +63,35 @@ export default function IdentitySettingsPage() {
     }
     return m;
   }, [myTitles]);
+
+  // -- Cosmetics --
+  const [cosmeticBusy, setCosmeticBusy] = useState(false);
+
+  async function handleEquipCosmetic(effect: string) {
+    setCosmeticBusy(true);
+    try {
+      const updated = await Api.setCosmetic(effect);
+      setUser(updated);
+      pushToast("success", t("identity.cosmeticEquip"));
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    } finally {
+      setCosmeticBusy(false);
+    }
+  }
+
+  async function handleUnequipCosmetic() {
+    setCosmeticBusy(true);
+    try {
+      const updated = await Api.setCosmetic("");
+      setUser(updated);
+      pushToast("success", t("identity.cosmeticUnequip"));
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    } finally {
+      setCosmeticBusy(false);
+    }
+  }
 
   // -- Defense ticket --
   const [defenseLoading, setDefenseLoading] = useState(false);
@@ -239,7 +269,7 @@ export default function IdentitySettingsPage() {
           {t("identity.skinSection")}
         </h2>
         <div className="flex items-center gap-5">
-          <CharacterAvatar level={level} skin={skinId} size={96} withFrame />
+          <CosmeticAvatar level={level} skin={skinId} size={96} withFrame cosmetic={user?.active_cosmetic} />
           <div className="flex-1 space-y-2">
             <p className="text-sm font-medium text-text-1">{skinDef.label}</p>
             <Link
@@ -251,6 +281,96 @@ export default function IdentitySettingsPage() {
             <p className="text-xs text-text-2">{t("identity.skinNote")}</p>
           </div>
         </div>
+      </div>
+
+      {/* Cosmetics Section */}
+      <div className="card space-y-3">
+        <h2 className="text-sm font-semibold flex items-center gap-2">
+          ✨ {t("identity.cosmeticSection")}
+        </h2>
+
+        {(() => {
+          const ownedCosmetics = (user?.purchased_cosmetics ?? []).filter(
+            (id) => ALL_COSMETIC_IDS.includes(id)
+          );
+          const activeCosmetic = user?.active_cosmetic ?? "";
+
+          if (ownedCosmetics.length === 0) {
+            return (
+              <p className="text-sm text-text-2 italic">
+                {t("identity.cosmeticEmpty")}
+              </p>
+            );
+          }
+
+          return (
+            <div className="space-y-3">
+              {/* Un-equip button if something is active */}
+              {activeCosmetic && (
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={handleUnequipCosmetic}
+                    disabled={cosmeticBusy}
+                    className="text-xs rounded-md px-3 py-1.5 bg-surface-2 border border-border text-text-2 hover:border-accent/50 disabled:opacity-50"
+                  >
+                    {t("identity.cosmeticUnequip")}
+                  </button>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {ownedCosmetics.map((effectId) => {
+                  const def = cosmeticById(effectId);
+                  if (!def) return null;
+                  const isActive = activeCosmetic === effectId;
+                  return (
+                    <div
+                      key={effectId}
+                      className={`rounded-md border p-3 flex items-center gap-3 ${
+                        isActive
+                          ? "border-accent/60 bg-accent/5 shadow shadow-accent/10"
+                          : "border-border"
+                      }`}
+                    >
+                      {/* Small preview avatar with this cosmetic */}
+                      <CosmeticAvatar
+                        level={level}
+                        skin={skinId}
+                        size={48}
+                        cosmetic={effectId}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text-1 truncate">
+                          {t(def.labelKey)}
+                        </p>
+                        {isActive && (
+                          <p className="text-[10px] text-accent mt-0.5">
+                            ⚔ {t("identity.cosmeticEquipped")}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={cosmeticBusy || isActive}
+                        onClick={() => handleEquipCosmetic(effectId)}
+                        className={`text-xs rounded-md px-3 py-1.5 shrink-0 transition-colors disabled:opacity-50 ${
+                          isActive
+                            ? "bg-accent text-white cursor-default"
+                            : "bg-surface-2 border border-border text-text-1 hover:border-accent/50"
+                        }`}
+                      >
+                        {isActive
+                          ? t("identity.cosmeticEquipped")
+                          : t("identity.cosmeticEquip")}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Persona Section */}

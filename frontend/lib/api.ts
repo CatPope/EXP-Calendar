@@ -219,6 +219,12 @@ export const Api = {
       method: "PATCH",
       body: JSON.stringify({ status_message })
     }),
+  // 코스메틱 장착/해제 — 보유한 cosmetic effect 중 하나(또는 "")로 설정.
+  setCosmetic: (cosmetic: string) =>
+    apiFetch<User>("/api/me/cosmetic", {
+      method: "PATCH",
+      body: JSON.stringify({ cosmetic })
+    }),
   // [v1.4] 보유 방어권 1장 사용 → 장착/전시 칭호 페널티 복구.
   redeemDefenseTicket: () =>
     apiFetch<{ defense_tickets: number; cleared: boolean }>(

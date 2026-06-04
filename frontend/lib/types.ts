@@ -4,7 +4,7 @@ export type Difficulty = "LOW" | "MEDIUM" | "HIGH";
 export type ScheduleStatus = "PENDING" | "COMPLETED" | "OVERDUE";
 export type Tendency = "EASY" | "NORMAL" | "HARD";
 export type Grade = "COMMON" | "RARE" | "EPIC" | "LEGENDARY";
-export type ItemCategory = "CUSTOMIZE" | "DEFENSE" | "PERSONA";
+export type ItemCategory = "CUSTOMIZE" | "DEFENSE" | "PERSONA" | "SUMMON";
 export type QuestType = "ADD_PLAN" | "COMPLETE_PLAN" | "VISIT_SHOWCASE";
 export type CharacterType = "default" | "tsundere" | "knight";
 
@@ -37,6 +37,8 @@ export interface User {
   status_message: string;
   persona_tokens: number;
   character_skin: string;
+  active_cosmetic: string;
+  purchased_cosmetics?: string[];
   summon_tickets: number;
   pity_counter: number;
   defense_tickets: number;

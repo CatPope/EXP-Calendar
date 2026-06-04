@@ -24,13 +24,14 @@ func NewShowcaseHandler(u *repo.UserRepo, t *repo.TitleRepo, r *repo.RewardRepo,
 }
 
 type recommendationRow struct {
-	UserID        uuid.UUID `json:"user_id"`
-	DisplayName   string    `json:"display_name"`
-	Level         int       `json:"level"`
-	EquippedTitle any       `json:"equipped_title"`
-	CharacterSkin string    `json:"character_skin"`
-	PersonaName   string    `json:"persona_name"`
-	StatusMessage string    `json:"status_message"`
+	UserID         uuid.UUID `json:"user_id"`
+	DisplayName    string    `json:"display_name"`
+	Level          int       `json:"level"`
+	EquippedTitle  any       `json:"equipped_title"`
+	CharacterSkin  string    `json:"character_skin"`
+	PersonaName    string    `json:"persona_name"`
+	StatusMessage  string    `json:"status_message"`
+	ActiveCosmetic string    `json:"active_cosmetic"`
 }
 
 func (h *ShowcaseHandler) Recommendations(c *gin.Context) {
@@ -65,13 +66,14 @@ func (h *ShowcaseHandler) Recommendations(c *gin.Context) {
 			}
 		}
 		out = append(out, recommendationRow{
-			UserID:        u.ID,
-			DisplayName:   u.DisplayName,
-			Level:         u.Level,
-			EquippedTitle: eq,
-			CharacterSkin: u.CharacterSkin,
-			PersonaName:   u.PersonaName,
-			StatusMessage: u.StatusMessage,
+			UserID:         u.ID,
+			DisplayName:    u.DisplayName,
+			Level:          u.Level,
+			EquippedTitle:  eq,
+			CharacterSkin:  u.CharacterSkin,
+			PersonaName:    u.PersonaName,
+			StatusMessage:  u.StatusMessage,
+			ActiveCosmetic: u.ActiveCosmetic,
 		})
 	}
 	Respond(c, http.StatusOK, out)
@@ -90,6 +92,7 @@ type showcaseProfileResponse struct {
 	StatusMessage       string          `json:"status_message"`
 	CharacterSkin       string          `json:"character_skin"`
 	Grass               map[string]int  `json:"grass"`
+	ActiveCosmetic      string          `json:"active_cosmetic"`
 }
 
 func (h *ShowcaseHandler) Get(c *gin.Context) {
@@ -147,6 +150,7 @@ func (h *ShowcaseHandler) Get(c *gin.Context) {
 		StatusMessage:       u.StatusMessage,
 		CharacterSkin:       u.CharacterSkin,
 		Grass:               grass,
+		ActiveCosmetic:      u.ActiveCosmetic,
 	})
 }
 

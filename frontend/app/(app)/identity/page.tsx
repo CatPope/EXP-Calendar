@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Sparkles, Crown, AlertTriangle } from "lucide-react";
+import { Sparkles, Crown, AlertTriangle, Wand2, Send } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
-import CharacterAvatar from "@/components/CharacterAvatar";
+import CosmeticAvatar from "@/components/CosmeticAvatar";
 import TitleBadge from "@/components/TitleBadge";
-import { Api } from "@/lib/api";
+import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import { useT } from "@/lib/i18n";
@@ -17,6 +18,42 @@ import type { SkinId } from "@/lib/character";
 export default function IdentityPage() {
   const t = useT();
   const user = useAppStore((s) => s.user);
+  const pushToast = useAppStore((s) => s.pushToast);
+
+  // AI 페르소나 한마디 (변환 → 쇼케이스 게시)
+  const [voice, setVoice] = useState("");
+  const [genResult, setGenResult] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [posting, setPosting] = useState(false);
+
+  async function doGenerate() {
+    const text = voice.trim();
+    if (!text) return;
+    setGenerating(true);
+    try {
+      const r = await Api.generatePersona(text);
+      setGenResult(r.llm_output);
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function doPost() {
+    const text = voice.trim();
+    if (!text) return;
+    setPosting(true);
+    try {
+      const r = await Api.postShowcase(text);
+      setGenResult(r.llm_output);
+      pushToast("success", t("identity.aiPostSuccess"));
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    } finally {
+      setPosting(false);
+    }
+  }
 
   const {
     data: titles,
@@ -99,7 +136,7 @@ export default function IdentityPage() {
         <div className="flex flex-col sm:flex-row items-center gap-5">
           {/* Avatar */}
           <div className="flex flex-col items-center gap-2">
-            <CharacterAvatar level={level} skin={skinId} size={120} withFrame />
+            <CosmeticAvatar level={level} skin={skinId} size={120} withFrame cosmetic={user?.active_cosmetic} />
             <p className="text-xs text-text-2">
               {t("identity.skinLabel")}: {skinDef.label}
             </p>
@@ -230,6 +267,56 @@ export default function IdentityPage() {
             <p className="text-sm text-text-2 italic">{t("identity.noThoughts")}</p>
           )}
         </div>
+      </div>
+
+      {/* AI 페르소나 한마디 — 입력 텍스트를 캐릭터 말투로 변환해 쇼케이스에 게시 */}
+      <div className="card space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Wand2 className="h-4 w-4 text-accent" /> {t("identity.aiTitle")}
+          </h2>
+          <p className="text-xs text-text-2">{t("identity.aiDesc")}</p>
+        </div>
+        <textarea
+          value={voice}
+          onChange={(e) => setVoice(e.target.value.slice(0, 300))}
+          placeholder={t("identity.aiPlaceholder")}
+          rows={3}
+          className="w-full rounded-md bg-surface-2 border border-border px-3 py-2 text-sm text-text-1 resize-none"
+        />
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] text-text-2">
+            {t("identity.aiCounter", { n: voice.length })}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={doGenerate}
+              disabled={generating || !voice.trim()}
+              className="text-xs rounded-md px-3 py-1.5 bg-surface-2 border border-border text-text-1 hover:border-accent/50 disabled:opacity-50 inline-flex items-center gap-1.5"
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              {generating ? t("identity.converting") : t("identity.convert")}
+            </button>
+            <button
+              type="button"
+              onClick={doPost}
+              disabled={posting || !voice.trim()}
+              className="text-xs rounded-md px-3 py-1.5 bg-accent text-white hover:bg-accent/80 disabled:opacity-50 inline-flex items-center gap-1.5"
+            >
+              <Send className="h-3.5 w-3.5" />
+              {posting ? t("identity.posting") : t("identity.postShowcase")}
+            </button>
+          </div>
+        </div>
+        {genResult && (
+          <div className="rounded-md border border-accent/30 bg-accent/5 p-3">
+            <div className="text-[10px] text-text-2 mb-1">
+              {t("identity.resultTitle")}
+            </div>
+            <p className="text-sm text-text-1 whitespace-pre-wrap">{genResult}</p>
+          </div>
+        )}
       </div>
     </div>
   );

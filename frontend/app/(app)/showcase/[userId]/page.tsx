@@ -10,7 +10,7 @@ import { useT } from "@/lib/i18n";
 import type { ShowcaseDetail } from "@/lib/types";
 import TitleBadge from "@/components/TitleBadge";
 import GrassGraph from "@/components/GrassGraph";
-import CharacterAvatar from "@/components/CharacterAvatar";
+import CosmeticAvatar from "@/components/CosmeticAvatar";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
 import type { SkinId } from "@/lib/character";
@@ -84,10 +84,13 @@ export default function ShowcaseDetailPage() {
 
           {/* 캐릭터: 큰 비주얼 + 인게임 이름 + 대사 */}
           <div className="card flex flex-col items-center gap-3 py-6">
-            <CharacterAvatar
+            <CosmeticAvatar
               level={detail.level}
               skin={(detail.character_skin as SkinId) || undefined}
               size={320}
+              cosmetic={
+                (detail as unknown as { active_cosmetic?: string }).active_cosmetic
+              }
             />
             {(detail.persona_name || detail.status_message) && (
               <div className="text-center space-y-1">

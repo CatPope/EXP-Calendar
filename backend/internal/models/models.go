@@ -31,6 +31,7 @@ type User struct {
 	PersonaShowcaseText   string    `json:"persona_showcase_text"`
 	PersonaLLMOutput      string    `json:"persona_llm_output"`
 	CharacterSkin         string    `json:"character_skin"`
+	ActiveCosmetic        string    `json:"active_cosmetic"`
 	SummonTickets         int       `json:"summon_tickets"`
 	PityCounter           int       `json:"pity_counter"`
 	DefenseTickets        int       `json:"defense_tickets"`

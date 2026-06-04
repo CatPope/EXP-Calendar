@@ -99,6 +99,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.PATCH("/me/profile", meH.SetProfile)
 		authed.PATCH("/me/persona", meH.SetPersona)       // [v1.4] 구조화 페르소나 무료 편집
 		authed.PATCH("/me/status", meH.SetStatusMessage)  // [v1.4] 상태 메시지(대사) 편집
+		authed.PATCH("/me/cosmetic", meH.SetCosmetic)     // 코스메틱 장착(보유분 중 선택/해제)
 		authed.GET("/me/export", settingsH.Export)
 		authed.POST("/me/reset", settingsH.Reset)
 

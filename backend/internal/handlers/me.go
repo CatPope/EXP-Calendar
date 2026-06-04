@@ -46,8 +46,10 @@ type meResponse struct {
 	CharacterSkin        string `json:"character_skin"`
 	SummonTickets        int    `json:"summon_tickets"`
 	PityCounter          int    `json:"pity_counter"`
-	EquippedTitle        any    `json:"equipped_title"`
-	Tendency             string `json:"tendency"`
+	EquippedTitle        any      `json:"equipped_title"`
+	Tendency             string   `json:"tendency"`
+	ActiveCosmetic       string   `json:"active_cosmetic"`
+	PurchasedCosmetics   []string `json:"purchased_cosmetics"`
 }
 
 func (h *MeHandler) Get(c *gin.Context) {
@@ -72,6 +74,10 @@ func (h *MeHandler) Get(c *gin.Context) {
 			ColorHex:         equipped.Title.ColorHex,
 			NegativeModifier: equipped.NegativeModifier,
 		}
+	}
+	owned, _ := h.Users.PurchasedCosmetics(c.Request.Context(), uid)
+	if owned == nil {
+		owned = []string{}
 	}
 	Respond(c, http.StatusOK, meResponse{
 		ID:                   u.ID,
@@ -98,6 +104,8 @@ func (h *MeHandler) Get(c *gin.Context) {
 		PityCounter:          u.PityCounter,
 		EquippedTitle:        equippedJSON,
 		Tendency:             u.Tendency,
+		ActiveCosmetic:       u.ActiveCosmetic,
+		PurchasedCosmetics:   owned,
 	})
 }
 
@@ -166,7 +174,8 @@ func (h *MeHandler) SetCharacter(c *gin.Context) {
 // buildMeResponse constructs a meResponse from a fresh user record.
 // Equipped-title lookup is skipped (returns nil) to keep this helper lightweight;
 // callers that need the title should use Get instead.
-func buildMeResponse(u *models.User) meResponse {
+// purchasedCosmetics must be pre-fetched by the caller (pass []string{} not nil).
+func buildMeResponse(u *models.User, purchasedCosmetics []string) meResponse {
 	return meResponse{
 		ID:                   u.ID,
 		Email:                u.Email,
@@ -192,6 +201,8 @@ func buildMeResponse(u *models.User) meResponse {
 		PityCounter:          u.PityCounter,
 		EquippedTitle:        nil,
 		Tendency:             u.Tendency,
+		ActiveCosmetic:       u.ActiveCosmetic,
+		PurchasedCosmetics:   purchasedCosmetics,
 	}
 }
 
@@ -272,7 +283,11 @@ func (h *MeHandler) SetPersona(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, buildMeResponse(u))
+	owned, _ := h.Users.PurchasedCosmetics(c.Request.Context(), uid)
+	if owned == nil {
+		owned = []string{}
+	}
+	Respond(c, http.StatusOK, buildMeResponse(u, owned))
 }
 
 type setStatusMessageReq struct {
@@ -306,5 +321,66 @@ func (h *MeHandler) SetStatusMessage(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	Respond(c, http.StatusOK, buildMeResponse(u))
+	owned, _ := h.Users.PurchasedCosmetics(c.Request.Context(), uid)
+	if owned == nil {
+		owned = []string{}
+	}
+	Respond(c, http.StatusOK, buildMeResponse(u, owned))
+}
+
+type setCosmeticReq struct {
+	Cosmetic string `json:"cosmetic"`
+}
+
+// SetCosmetic equips (or un-equips when cosmetic=="") the given cosmetic effect string.
+// The caller must own the cosmetic (purchased via shop); "" bypasses ownership check.
+func (h *MeHandler) SetCosmetic(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate(c, func(r *setCosmeticReq) error {
+		// "" is allowed (un-equip); non-empty values must be validated against ownership.
+		return nil
+	})
+	if !ok {
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	if req.Cosmetic != "" {
+		owned, err := h.Users.PurchasedCosmetics(ctx, uid)
+		if err != nil {
+			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+			return
+		}
+		found := false
+		for _, oc := range owned {
+			if oc == req.Cosmetic {
+				found = true
+				break
+			}
+		}
+		if !found {
+			RespondErr(c, http.StatusBadRequest, "NOT_OWNED", "보유하지 않은 코스메틱입니다")
+			return
+		}
+	}
+
+	if err := h.Users.SetActiveCosmetic(ctx, uid, req.Cosmetic); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	u, err := h.Users.GetByID(ctx, uid)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	ownedFresh, _ := h.Users.PurchasedCosmetics(ctx, uid)
+	if ownedFresh == nil {
+		ownedFresh = []string{}
+	}
+	Respond(c, http.StatusOK, buildMeResponse(u, ownedFresh))
 }

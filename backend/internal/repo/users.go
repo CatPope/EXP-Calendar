@@ -18,7 +18,7 @@ func NewUserRepo(p *pgxpool.Pool) *UserRepo { return &UserRepo{Pool: p} }
 const userSelect = `SELECT id, email, display_name, google_sub, account_status, level,
 	total_exp, current_points, daily_points_earned, daily_points_earned_date,
 	tendency, persona_character_type, persona_definition, persona_tokens,
-	persona_showcase_text, persona_llm_output, character_skin,
+	persona_showcase_text, persona_llm_output, character_skin, active_cosmetic,
 	summon_tickets, pity_counter,
 	persona_name, persona_tone, persona_history, persona_thoughts, status_message, defense_tickets,
 	created_at, updated_at FROM users`
@@ -28,7 +28,7 @@ func scanUser(row pgx.Row) (*models.User, error) {
 	err := row.Scan(&u.ID, &u.Email, &u.DisplayName, &u.GoogleSub, &u.AccountStatus, &u.Level,
 		&u.TotalExp, &u.CurrentPoints, &u.DailyPointsEarned, &u.DailyPointsEarnedDate,
 		&u.Tendency, &u.PersonaCharacterType, &u.PersonaDefinition, &u.PersonaTokens,
-		&u.PersonaShowcaseText, &u.PersonaLLMOutput, &u.CharacterSkin,
+		&u.PersonaShowcaseText, &u.PersonaLLMOutput, &u.CharacterSkin, &u.ActiveCosmetic,
 		&u.SummonTickets, &u.PityCounter,
 		&u.PersonaName, &u.PersonaTone, &u.PersonaHistory, &u.PersonaThoughts, &u.StatusMessage, &u.DefenseTickets,
 		&u.CreatedAt, &u.UpdatedAt)
@@ -42,6 +42,36 @@ func scanUser(row pgx.Row) (*models.User, error) {
 func (r *UserRepo) SetCharacterSkin(ctx context.Context, id uuid.UUID, skin string) error {
 	_, err := r.Pool.Exec(ctx, `UPDATE users SET character_skin=$1, updated_at=now() WHERE id=$2`, skin, id)
 	return err
+}
+
+// SetActiveCosmetic persists the user's equipped cosmetic effect (e.g. "cosmetic:aura").
+// Empty string clears (un-equips).
+func (r *UserRepo) SetActiveCosmetic(ctx context.Context, id uuid.UUID, cosmetic string) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE users SET active_cosmetic=$1, updated_at=now() WHERE id=$2`, cosmetic, id)
+	return err
+}
+
+// PurchasedCosmetics returns the distinct cosmetic effect ids the user owns
+// (purchased items whose effect starts with "cosmetic:").
+func (r *UserRepo) PurchasedCosmetics(ctx context.Context, id uuid.UUID) ([]string, error) {
+	rows, err := r.Pool.Query(ctx,
+		`SELECT DISTINCT i.effect
+		   FROM purchases p JOIN items i ON i.id = p.item_id
+		  WHERE p.user_id=$1 AND i.effect LIKE 'cosmetic:%'
+		  ORDER BY i.effect`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []string{}
+	for rows.Next() {
+		var e string
+		if err := rows.Scan(&e); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }
 
 func (r *UserRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.User, error) {

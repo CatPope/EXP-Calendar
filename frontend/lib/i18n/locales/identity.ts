@@ -90,6 +90,30 @@ export const identity: NamespaceDict = {
     locked: "잠김",
     lockedHint: "조건 달성 시 획득",
 
+    // AI 페르소나 한마디
+    aiTitle: "페르소나 한마디",
+    aiDesc: "하고 싶은 말을 입력하면 내 페르소나 말투로 변환해 쇼케이스에 게시합니다.",
+    aiPlaceholder: "예: 오늘은 정말 열심히 했다.",
+    aiCounter: "{n}/300",
+    convert: "변환",
+    converting: "변환 중...",
+    postShowcase: "쇼케이스 게시",
+    posting: "게시 중...",
+    resultTitle: "변환 결과",
+    aiPostSuccess: "쇼케이스에 게시되었습니다.",
+
+    // cosmetics
+    cosmeticSection: "코스메틱",
+    cosmeticEmpty: "상점에서 코스메틱을 구매하세요.",
+    cosmeticEquip: "장착",
+    cosmeticEquipped: "장착됨",
+    cosmeticUnequip: "장착 안 함",
+    cos_hat: "픽셀 모자",
+    cos_crown: "황금 왕관",
+    cos_aura: "네온 오라",
+    cos_bg_space: "배경: 우주",
+    cos_bg_forest: "숲 배경",
+
     // common
     loading: "불러오는 중...",
     back: "← 메인",
@@ -173,6 +197,29 @@ export const identity: NamespaceDict = {
     locked: "Locked",
     lockedHint: "Unlock by completing the condition",
 
+    aiTitle: "Persona One-liner",
+    aiDesc: "Type something and it's converted into your persona's voice and posted to your showcase.",
+    aiPlaceholder: "e.g. I really worked hard today.",
+    aiCounter: "{n}/300",
+    convert: "Convert",
+    converting: "Converting...",
+    postShowcase: "Post to Showcase",
+    posting: "Posting...",
+    resultTitle: "Converted Result",
+    aiPostSuccess: "Posted to the showcase.",
+
+    // cosmetics
+    cosmeticSection: "Cosmetics",
+    cosmeticEmpty: "Purchase cosmetics from the shop.",
+    cosmeticEquip: "Equip",
+    cosmeticEquipped: "Equipped",
+    cosmeticUnequip: "Unequip",
+    cos_hat: "Pixel Hat",
+    cos_crown: "Golden Crown",
+    cos_aura: "Neon Aura",
+    cos_bg_space: "Background: Space",
+    cos_bg_forest: "Forest Background",
+
     loading: "Loading...",
     back: "← Main",
     penalty_section_heading: "Penalty Recovery"
@@ -254,6 +301,29 @@ export const identity: NamespaceDict = {
     progress: "進行 {cur}/{max}",
     locked: "ロック中",
     lockedHint: "条件達成で取得可能",
+
+    aiTitle: "ペルソナの一言",
+    aiDesc: "言いたいことを入力すると、ペルソナの口調に変換してショーケースに投稿します。",
+    aiPlaceholder: "例：今日は本当に頑張った。",
+    aiCounter: "{n}/300",
+    convert: "変換",
+    converting: "変換中...",
+    postShowcase: "ショーケースに投稿",
+    posting: "投稿中...",
+    resultTitle: "変換結果",
+    aiPostSuccess: "ショーケースに投稿しました。",
+
+    // cosmetics
+    cosmeticSection: "コスメティック",
+    cosmeticEmpty: "ショップでコスメティックを購入してください。",
+    cosmeticEquip: "装備",
+    cosmeticEquipped: "装備中",
+    cosmeticUnequip: "装備解除",
+    cos_hat: "ピクセル帽子",
+    cos_crown: "黄金の王冠",
+    cos_aura: "ネオンオーラ",
+    cos_bg_space: "背景：宇宙",
+    cos_bg_forest: "森の背景",
 
     loading: "読み込み中...",
     back: "← メイン",

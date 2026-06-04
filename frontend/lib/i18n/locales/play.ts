@@ -38,6 +38,7 @@ export const play: NamespaceDict = {
     catCustomize: "커스터마이즈",
     catDefense: "방어",
     catPersona: "페르소나",
+    catSummon: "뽑기권",
     // titles
     titlesTitle: "내 칭호",
     titlesCount: "총 {n}개 · 장착은 1개만 가능",
@@ -96,6 +97,7 @@ export const play: NamespaceDict = {
     catCustomize: "Customize",
     catDefense: "Defense",
     catPersona: "Persona",
+    catSummon: "Draw Tickets",
     // titles
     titlesTitle: "My Titles",
     titlesCount: "{n} total · only 1 can be equipped",
@@ -154,6 +156,7 @@ export const play: NamespaceDict = {
     catCustomize: "カスタマイズ",
     catDefense: "防御",
     catPersona: "ペルソナ",
+    catSummon: "ガチャ券",
     // titles
     titlesTitle: "マイ称号",
     titlesCount: "全{n}個 · 装備は1個のみ",

@@ -14,6 +14,7 @@ const CATEGORIES: { key: ItemCategory; labelKey: string }[] = [
   { key: "CUSTOMIZE", labelKey: "play.catCustomize" },
   { key: "DEFENSE", labelKey: "play.catDefense" },
   { key: "PERSONA", labelKey: "play.catPersona" },
+  { key: "SUMMON", labelKey: "play.catSummon" },
 ];
 
 export default function ShopPage() {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/expcalendar/backend/internal/middleware"
 	"github.com/expcalendar/backend/internal/models"
@@ -105,6 +106,13 @@ func (h *ShopHandler) Purchase(c *gin.Context) {
 	// Side-effect: summon ticket items (effect=summon:ticket[:N]) grant tickets.
 	if it.Effect == "summon:ticket" {
 		if _, err := tx.Exec(ctx, `UPDATE users SET summon_tickets=summon_tickets+1 WHERE id=$1`, uid); err != nil {
+			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+			return
+		}
+	}
+	// Side-effect: 코스메틱 아이템 구매 시 즉시 장착 (effect=cosmetic:*).
+	if strings.HasPrefix(it.Effect, "cosmetic:") {
+		if _, err := tx.Exec(ctx, `UPDATE users SET active_cosmetic=$1 WHERE id=$2`, it.Effect, uid); err != nil {
 			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 			return
 		}
