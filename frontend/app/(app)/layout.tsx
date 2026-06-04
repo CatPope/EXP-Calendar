@@ -12,10 +12,7 @@ import {
   Settings,
   ListChecks,
   BarChart3,
-  Gift,
-  PanelLeftClose,
-  PanelLeftOpen,
-  X
+  Gift
 } from "lucide-react";
 import { Api, humanizeError } from "@/lib/api";
 import { clearTokens, getStoredAccessToken } from "@/lib/auth";
@@ -48,7 +45,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pushToast = useAppStore((s) => s.pushToast);
   const setSettings = useAppStore((s) => s.setSettings);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
   const settingsOpen = useAppStore((s) => s.settingsOpen);
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
 
@@ -103,109 +99,67 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <HUD />
+    // 데모 app.jsx 그리드 셸: 1행 헤더(전체 폭) · 2행 [nav | main | rail]
+    <div className="h-screen grid grid-rows-[auto_1fr] grid-cols-[auto_1fr_auto] bg-base overflow-hidden">
+      {/* top: 헤더 (전체 폭, 설정 기어는 우측) */}
+      <div className="col-span-full row-start-1">
+        <HUD />
+      </div>
 
-      {/* dim overlay — 모바일에서만 (데스크톱은 푸시 레이아웃이라 미사용) */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden
-        />
-      )}
-
-      {/* 좌측 가장자리 토글 버튼 — 사이드바 모서리를 따라 이동(열기/닫기) */}
-      <button
-        type="button"
-        aria-label={sidebarOpen ? t("core.closeMenu") : t("common.openMenu")}
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`fixed top-20 z-[60] flex h-9 w-9 items-center justify-center rounded-r-lg border border-l-0 border-border bg-surface text-text-2 hover:text-text-1 hover:bg-surface-2 shadow-md transition-all duration-200 ${
-          sidebarOpen ? "left-64" : "left-0"
+      {/* nav: 좌측 사이드바 — 열림 220px / 접힘·모바일 64px 아이콘 레일 */}
+      <nav
+        className={`row-start-2 col-start-1 bg-surface border-r border-border flex flex-col overflow-y-auto overflow-x-hidden transition-[width] duration-200 ${
+          sidebarOpen ? "w-16 lg:w-[220px]" : "w-16"
         }`}
       >
-        {sidebarOpen ? (
-          <PanelLeftClose className="h-5 w-5" />
-        ) : (
-          <PanelLeftOpen className="h-5 w-5" />
-        )}
-      </button>
-
-      {/* 사이드바 (데모 nav 참고: 기본 열림 · 데스크톱 푸시 · 모바일 드로어) */}
-      <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-surface border-r border-border flex flex-col transition-transform duration-200 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <span className="font-bold text-accent">EXP Calendar</span>
-          <button
-            type="button"
-            aria-label={t("core.closeMenu")}
-            onClick={() => setSidebarOpen(false)}
-            className="text-text-2 hover:text-text-1"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <nav className="p-3 flex-1 space-y-1 overflow-y-auto">
+        <div className="flex-1 p-2 space-y-1">
           {NAV.map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
                 key={href}
                 href={href}
-                onClick={() => {
-                  // 데스크톱은 고정 사이드바라 유지, 모바일에서만 닫기.
-                  if (typeof window !== "undefined" && window.innerWidth < 1024) {
-                    setSidebarOpen(false);
-                  }
-                }}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                title={t(`core.${labelKey}`)}
+                className={`flex items-center gap-3 rounded-md py-2 text-sm border-l-2 transition-colors ${
+                  sidebarOpen ? "px-0 justify-center lg:px-3 lg:justify-start" : "px-0 justify-center"
+                } ${
                   active
-                    ? "bg-accent/20 text-accent border border-accent/40"
-                    : "text-text-2 hover:bg-surface-2 hover:text-text-1"
+                    ? "bg-accent/15 text-accent border-accent"
+                    : "text-text-2 hover:bg-surface-2 hover:text-text-1 border-transparent"
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                {t(`core.${labelKey}`)}
+                <Icon className="h-5 w-5 shrink-0" />
+                {sidebarOpen && (
+                  <span className="hidden lg:inline truncate">{t(`core.${labelKey}`)}</span>
+                )}
               </Link>
             );
           })}
-        </nav>
-        <div className="p-3 border-t border-border space-y-1">
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-surface-2 hover:text-text-1"
-          >
-            <Settings className="h-4 w-4" />
-            {t("core.settings")}
-          </button>
+        </div>
+        {/* footer: 로그아웃 (설정 항목은 헤더 기어로 이동) */}
+        <div className="p-2 border-t border-border">
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-danger/10 hover:text-danger"
+            title={t("core.logout")}
+            className={`w-full flex items-center gap-3 rounded-md py-2 text-sm text-text-2 hover:bg-danger/10 hover:text-danger ${
+              sidebarOpen ? "px-0 justify-center lg:px-3 lg:justify-start" : "px-0 justify-center"
+            }`}
           >
-            <LogOut className="h-4 w-4" />
-            {t("core.logout")}
+            <LogOut className="h-5 w-5 shrink-0" />
+            {sidebarOpen && <span className="hidden lg:inline">{t("core.logout")}</span>}
           </button>
         </div>
-      </aside>
+      </nav>
 
-      {/* 본문 + 우측 고정 프로필 레일. 데스크톱은 사이드바만큼 우측으로 밀림. */}
-      <div
-        className={`flex-1 transition-[padding] duration-200 ${
-          sidebarOpen ? "lg:pl-64" : ""
-        }`}
-      >
-        <div className="w-full max-w-7xl mx-auto flex gap-4 lg:gap-6 p-4 md:p-6">
-          <main className="flex-1 min-w-0">{children}</main>
-          <aside className="hidden lg:block w-72 shrink-0">
-            <div className="sticky top-20">
-              <ProfileRail />
-            </div>
-          </aside>
-        </div>
-      </div>
+      {/* main: 중앙 본문 (독립 스크롤) */}
+      <main className="row-start-2 col-start-2 min-w-0 overflow-auto">
+        <div className="w-full max-w-5xl mx-auto p-4 md:p-6">{children}</div>
+      </main>
+
+      {/* rail: 우측 프로필 (xl 이상, 독립 스크롤) */}
+      <aside className="row-start-2 col-start-3 hidden xl:block w-80 bg-surface border-l border-border overflow-auto p-4">
+        <ProfileRail />
+      </aside>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
