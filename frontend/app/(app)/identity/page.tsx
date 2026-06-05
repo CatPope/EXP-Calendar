@@ -20,7 +20,8 @@ import ErrorBanner from "@/components/ErrorBanner";
 import CosmeticAvatar from "@/components/CosmeticAvatar";
 import TitleBadge from "@/components/TitleBadge";
 import GrassGraph from "@/components/GrassGraph";
-import TrendLineChart, { type TrendPoint } from "@/components/insights/TrendLineChart";
+import TrendLineChart from "@/components/insights/TrendLineChart";
+import { buildDisplaySeries } from "@/lib/insights";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
@@ -28,8 +29,6 @@ import { useT } from "@/lib/i18n";
 import type { UserTitle, StatsSummary, SeriesPoint } from "@/lib/types";
 import { skinById } from "@/lib/character";
 import type { SkinId } from "@/lib/character";
-
-type DisplayPoint = TrendPoint;
 
 const GRADES = ["D", "C", "B", "A", "S"] as const;
 
@@ -155,52 +154,12 @@ export default function IdentityPage() {
   const gIdx = summary ? gradeIndex(summary.rating_grade) : 0;
   const successPct = summary ? (summary.success_rate * 100).toFixed(1) : "0.0";
 
-  // Build display-ready points: aggregate year → 12 monthly buckets; format labels per period.
-  const displaySeries = useMemo<DisplayPoint[]>(() => {
-    if (!series || series.length === 0) return [];
-    if (period === "year") {
-      const buckets = new Map<string, { success: number; fail: number }>();
-      for (const p of series) {
-        const monthKey = p.date.slice(0, 7);
-        const b = buckets.get(monthKey) ?? { success: 0, fail: 0 };
-        b.success += p.success;
-        b.fail += p.fail;
-        buckets.set(monthKey, b);
-      }
-      const sorted = Array.from(buckets.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .slice(-12);
-      return sorted.map(([monthKey, val]) => {
-        const m = parseInt(monthKey.slice(5), 10);
-        return {
-          key: monthKey,
-          label: t(`insights.month${m}`),
-          success: val.success,
-          fail: val.fail,
-        };
-      });
-    }
-    if (period === "week") {
-      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      return series.map((p) => {
-        const d = new Date(p.date + "T00:00:00");
-        const dayAbbr = dayNames[d.getDay()];
-        const md = p.date.slice(5).replace("-", "/");
-        return {
-          key: p.date,
-          label: `${dayAbbr} ${md}`,
-          success: p.success,
-          fail: p.fail,
-        };
-      });
-    }
-    return series.map((p) => ({
-      key: p.date,
-      label: String(parseInt(p.date.slice(8), 10)),
-      success: p.success,
-      fail: p.fail,
-    }));
-  }, [series, period, t]);
+  // Build display-ready points — 백엔드가 이미 period 단위로 집계해 보내므로
+  // 라벨 포맷팅만 한다 (lib/insights.ts).
+  const displaySeries = useMemo(
+    () => buildDisplaySeries(series, period, t),
+    [series, period, t]
+  );
 
   const activeTitles = (titles ?? []).filter(
     (ut) => ut.is_equipped || ut.is_displayed
@@ -532,10 +491,7 @@ export default function IdentityPage() {
                 {t("insights.trendFail")}
               </span>
             </div>
-            <TrendLineChart
-              points={displaySeries}
-              showAllLabels={period !== "month"}
-            />
+            <TrendLineChart points={displaySeries} showAllLabels />
           </div>
         )}
       </div>

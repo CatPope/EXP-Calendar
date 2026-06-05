@@ -20,9 +20,8 @@ import CosmeticAvatar from "@/components/CosmeticAvatar";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
 import Spinner from "@/components/common/Spinner";
-import TrendLineChart, {
-  type TrendPoint,
-} from "@/components/insights/TrendLineChart";
+import TrendLineChart from "@/components/insights/TrendLineChart";
+import { buildDisplaySeries } from "@/lib/insights";
 import type { SkinId } from "@/lib/character";
 
 const GRADES = ["D", "C", "B", "A", "S"] as const;
@@ -95,51 +94,10 @@ export default function ShowcaseDetailPage() {
   const gIdx = summary ? gradeIndex(summary.rating_grade) : 0;
   const successPct = summary ? (summary.success_rate * 100).toFixed(1) : "0.0";
 
-  const displaySeries = useMemo<TrendPoint[]>(() => {
-    if (!series || series.length === 0) return [];
-    if (period === "year") {
-      const buckets = new Map<string, { success: number; fail: number }>();
-      for (const p of series) {
-        const monthKey = p.date.slice(0, 7);
-        const b = buckets.get(monthKey) ?? { success: 0, fail: 0 };
-        b.success += p.success;
-        b.fail += p.fail;
-        buckets.set(monthKey, b);
-      }
-      const sorted = Array.from(buckets.entries())
-        .sort((a, b) => a[0].localeCompare(b[0]))
-        .slice(-12);
-      return sorted.map(([monthKey, val]) => {
-        const m = parseInt(monthKey.slice(5), 10);
-        return {
-          key: monthKey,
-          label: t(`insights.month${m}`),
-          success: val.success,
-          fail: val.fail,
-        };
-      });
-    }
-    if (period === "week") {
-      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      return series.map((p) => {
-        const d = new Date(p.date + "T00:00:00");
-        const dayAbbr = dayNames[d.getDay()];
-        const md = p.date.slice(5).replace("-", "/");
-        return {
-          key: p.date,
-          label: `${dayAbbr} ${md}`,
-          success: p.success,
-          fail: p.fail,
-        };
-      });
-    }
-    return series.map((p) => ({
-      key: p.date,
-      label: String(parseInt(p.date.slice(8), 10)),
-      success: p.success,
-      fail: p.fail,
-    }));
-  }, [series, period, t]);
+  const displaySeries = useMemo(
+    () => buildDisplaySeries(series, period, t),
+    [series, period, t]
+  );
 
   return (
     <div className="space-y-4">
@@ -385,10 +343,7 @@ export default function ShowcaseDetailPage() {
                         {t("insights.trendFail")}
                       </span>
                     </div>
-                    <TrendLineChart
-                      points={displaySeries}
-                      showAllLabels={period !== "month"}
-                    />
+                    <TrendLineChart points={displaySeries} showAllLabels />
                   </div>
                 )}
               </div>
