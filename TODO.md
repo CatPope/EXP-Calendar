@@ -57,6 +57,6 @@
 ## 공통 규칙
 
 - 작업 시작 전 `CLAUDE.md` 정독.
-- SRS v1.2(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.2.md`)·v1.3(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.3.md`)은 동결 보존, **절대 수정 금지**. 현재 권위 문서는 v1.4. 권위 변경 필요 시 사용자에게 먼저 확인.
+- SRS v1.2(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.2.md`)·v1.3(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.3.md`)은 동결 보존, **절대 수정 금지**. 현재 권위 문서는 `docs/for_ai/planning/requirements_ieee830_v1.4.md`. 권위 변경 필요 시 사용자에게 먼저 확인.
 - 세부 결정은 담당자가 내리되, 본 TODO와 어긋나는 결정은 본 파일을 함께 수정해 기록한다.
 - PR 본문에 어떤 항목을 처리했는지 본 파일 체크박스 기준으로 보고한다.
