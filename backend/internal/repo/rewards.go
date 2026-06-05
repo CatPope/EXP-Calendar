@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -106,6 +107,63 @@ func (r *RewardRepo) SeriesByDay(ctx context.Context, userID uuid.UUID, from, to
 		 ) combined
 		 GROUP BY d ORDER BY d`,
 		userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]any
+	for rows.Next() {
+		var d time.Time
+		var s, f int
+		if err := rows.Scan(&d, &s, &f); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"date":    d.Format("2006-01-02"),
+			"success": s,
+			"fail":    f,
+		})
+	}
+	return out, rows.Err()
+}
+
+// SeriesAggregated 는 추이 차트용 데이터를 granularity 단위(day/month/year)로
+// 미리 집계해서 반환한다. 응답의 "date" 필드는 버킷 시작 날짜를 YYYY-MM-DD 로 직렬화:
+//   - day:   "YYYY-MM-DD"  (그 날)
+//   - month: "YYYY-MM-01"  (해당 월 1일)
+//   - year:  "YYYY-01-01"  (해당 연 1월 1일)
+// 일정은 due_date 기준, 퀘스트는 occurred_at 기준 (KST).
+func (r *RewardRepo) SeriesAggregated(ctx context.Context, userID uuid.UUID, from, to time.Time, granularity string) ([]map[string]any, error) {
+	var bucketExpr string
+	switch granularity {
+	case "month":
+		bucketExpr = "date_trunc('month', %s AT TIME ZONE 'Asia/Seoul')::date"
+	case "year":
+		bucketExpr = "date_trunc('year', %s AT TIME ZONE 'Asia/Seoul')::date"
+	default: // "day"
+		bucketExpr = "(%s AT TIME ZONE 'Asia/Seoul')::date"
+	}
+	sql := `SELECT d,
+		   SUM(success) AS success,
+		   SUM(fail)    AS fail
+		 FROM (
+		   SELECT
+		     ` + fmt.Sprintf(bucketExpr, "due_date") + ` AS d,
+		     CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END AS success,
+		     CASE WHEN status='OVERDUE'   THEN 1 ELSE 0 END AS fail
+		   FROM schedules
+		   WHERE user_id=$1 AND due_date >= $2 AND due_date < $3
+		   UNION ALL
+		   SELECT
+		     ` + fmt.Sprintf(bucketExpr, "occurred_at") + ` AS d,
+		     1 AS success,
+		     0 AS fail
+		   FROM reward_log
+		   WHERE user_id=$1 AND source='QUEST'
+		     AND occurred_at >= $2 AND occurred_at < $3
+		 ) combined
+		 GROUP BY d ORDER BY d`
+	rows, err := r.Pool.Query(ctx, sql, userID, from, to)
 	if err != nil {
 		return nil, err
 	}

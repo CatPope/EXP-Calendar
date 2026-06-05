@@ -201,16 +201,8 @@ func (h *ShowcaseHandler) Series(c *gin.Context) {
 	kstLoc := kstLocation()
 	nowKST := timeNow().In(kstLoc)
 	to := time.Date(nowKST.Year(), nowKST.Month(), nowKST.Day()+1, 0, 0, 0, 0, kstLoc)
-	var from time.Time
-	switch period {
-	case "month":
-		from = to.AddDate(0, -1, 0)
-	case "year":
-		from = to.AddDate(-1, 0, 0)
-	default:
-		from = to.AddDate(0, 0, -7)
-	}
-	out, err := h.Rewards.SeriesByDay(c.Request.Context(), target, from, to)
+	from, granularity := periodWindow(period, to)
+	out, err := h.Rewards.SeriesAggregated(c.Request.Context(), target, from, to, granularity)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
