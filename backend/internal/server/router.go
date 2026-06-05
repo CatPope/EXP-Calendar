@@ -65,7 +65,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 	shopH := handlers.NewShopHandler(pool, shop, users, titles)
 	titlesH := handlers.NewTitlesHandler(pool, titles, stats, rewards)
 	personaH := handlers.NewPersonaHandler(llmClient, users, titles)
-	showcaseH := handlers.NewShowcaseHandler(users, titles, rewards, quests)
+	showcaseH := handlers.NewShowcaseHandler(users, titles, rewards, quests, stats)
 	statsH := handlers.NewStatsHandler(rewards, stats)
 	notifH := handlers.NewNotificationsHandler(push, cfg.VAPIDPublic)
 	summonH := handlers.NewSummonHandler(pool, users, characters)
@@ -99,6 +99,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.PATCH("/me/profile", meH.SetProfile)
 		authed.PATCH("/me/persona", meH.SetPersona)       // [v1.4] 구조화 페르소나 무료 편집
 		authed.PATCH("/me/status", meH.SetStatusMessage)  // [v1.4] 상태 메시지(대사) 편집
+		authed.PATCH("/me/stats-public", meH.SetStatsPublic) // 쇼케이스 통계 공유 토글
 		authed.PATCH("/me/cosmetic", meH.SetCosmetic)     // 코스메틱 장착(보유분 중 선택/해제)
 		authed.GET("/me/export", settingsH.Export)
 		authed.POST("/me/reset", settingsH.Reset)
@@ -145,6 +146,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		// showcase (social)
 		authed.GET("/showcase/recommendations", showcaseH.Recommendations)
 		authed.GET("/showcase/:user_id", showcaseH.Get)
+		authed.GET("/showcase/:user_id/series", showcaseH.Series)
 
 		// stats
 		authed.GET("/stats/grass", statsH.Grass)

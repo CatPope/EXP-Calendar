@@ -197,6 +197,11 @@ UserTitle:
 - res: `{ data: { llm_output: "string", character_type: "string", used_definition: bool } }`
 - `GEMINI_API_KEY` 없을 시 deterministic mock 사용
 
+### PATCH /api/me/stats-public
+- body: `{ "public": true | false }`
+- res: `{ data: User }` (전체 user 반환; `stats_public` 갱신됨)
+- 쇼케이스에서 본인 통계 노출 여부를 토글한다. 본인 페이지(`/identity`)는 토글과 무관하게 항상 본다.
+
 ### POST /api/persona/showcase
 - body: `{ "text": "string", "llm_output": "string" }`
   - `text` — 사용자가 입력한 원문
@@ -205,6 +210,11 @@ UserTitle:
 - **LLM 을 재호출하지 않는다** — 받은 `llm_output` 을 그대로 저장. 사용자에게 보여준 "변환 결과(미리보기)" 와 "게시 결과"가 항상 동일하도록 보장.
 - 두 필드 중 하나라도 비어 있으면 400 → 클라이언트는 게시 전에 반드시 변환(`/generate`)을 거쳐야 한다.
 - 모네타이제이션 경계(FR-SHOP-03)는 `/generate` 가 (definition override 없이) 저장된 persona 로만 호출되도록 UI 가 보장한다.
+
+### GET /api/showcase/:user_id/series?period=week|month|year
+- 쇼케이스 통계 추이 데이터.
+- 대상이 `stats_public=false` 이고 viewer != target 이면 403 `STATS_PRIVATE`.
+- res: `{ data: SeriesPoint[] }` ( `/api/stats/series` 와 동일 형식 )
 
 ### GET /api/showcase/:user_id
 - res:
@@ -219,11 +229,15 @@ UserTitle:
     "displayed_titles": [Title, ...],
     "persona_showcase_text": "string",
     "persona_llm_output": "string",
-    "grass": { "YYYY-MM-DD": 2, ... }
+    "grass": { "YYYY-MM-DD": 2, ... },
+    "stats_public": true,
+    "summary": StatsSummary | null
   }
 }
 ```
-- 본인의 상세 일정/실패율은 노출하지 않음 (FR-SOC-03)
+- `stats_public=false` 이고 viewer != target 이면 `summary` 가 빠지고 `grass` 도 빈 객체로 반환된다.
+- 본인 페이지(viewer == target)는 토글과 무관하게 항상 풀 데이터를 본다.
+- 본인의 상세 일정/실패율은 노출하지 않음 (FR-SOC-03 — `summary` 안의 success_rate 는 공개 허용 시에만)
 
 ### GET /api/showcase/recommendations?q=
 - res: `{ data: [{ user_id, display_name, level, equipped_title }] }`  ← 추천 목록 (다른 사용자 최대 20)

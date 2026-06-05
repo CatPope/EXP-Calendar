@@ -35,6 +35,7 @@ type User struct {
 	SummonTickets         int       `json:"summon_tickets"`
 	PityCounter           int       `json:"pity_counter"`
 	DefenseTickets        int       `json:"defense_tickets"`
+	StatsPublic           bool      `json:"stats_public"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"-"`
 }

@@ -33,6 +33,7 @@ const userSelect = `SELECT id, email, display_name, google_sub, account_status, 
 	persona_showcase_text, persona_llm_output, character_skin, active_cosmetic,
 	summon_tickets, pity_counter,
 	persona_name, persona_tone, persona_history, persona_thoughts, status_message, defense_tickets,
+	stats_public,
 	created_at, updated_at FROM users`
 
 func scanUser(row pgx.Row) (*models.User, error) {
@@ -43,11 +44,18 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.PersonaShowcaseText, &u.PersonaLLMOutput, &u.CharacterSkin, &u.ActiveCosmetic,
 		&u.SummonTickets, &u.PityCounter,
 		&u.PersonaName, &u.PersonaTone, &u.PersonaHistory, &u.PersonaThoughts, &u.StatusMessage, &u.DefenseTickets,
+		&u.StatsPublic,
 		&u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	return &u, nil
+}
+
+// SetStatsPublic 은 쇼케이스 통계 공개 여부 토글을 저장한다.
+func (r *UserRepo) SetStatsPublic(ctx context.Context, id uuid.UUID, public bool) error {
+	_, err := r.Pool.Exec(ctx, `UPDATE users SET stats_public=$1, updated_at=now() WHERE id=$2`, public, id)
+	return err
 }
 
 // SetCharacterSkin persists the user's chosen 2D character skin id.

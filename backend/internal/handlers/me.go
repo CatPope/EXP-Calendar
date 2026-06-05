@@ -50,6 +50,7 @@ type meResponse struct {
 	Tendency             string   `json:"tendency"`
 	ActiveCosmetic       string   `json:"active_cosmetic"`
 	PurchasedCosmetics   []string `json:"purchased_cosmetics"`
+	StatsPublic          bool     `json:"stats_public"`
 }
 
 func (h *MeHandler) Get(c *gin.Context) {
@@ -106,6 +107,7 @@ func (h *MeHandler) Get(c *gin.Context) {
 		Tendency:             u.Tendency,
 		ActiveCosmetic:       u.ActiveCosmetic,
 		PurchasedCosmetics:   owned,
+		StatsPublic:          u.StatsPublic,
 	})
 }
 
@@ -203,6 +205,7 @@ func buildMeResponse(u *models.User, purchasedCosmetics []string) meResponse {
 		Tendency:             u.Tendency,
 		ActiveCosmetic:       u.ActiveCosmetic,
 		PurchasedCosmetics:   purchasedCosmetics,
+		StatsPublic:          u.StatsPublic,
 	}
 }
 
@@ -275,6 +278,39 @@ func (h *MeHandler) SetPersona(c *gin.Context) {
 	}
 	if err := h.Users.UpdatePersonaFields(c.Request.Context(), uid,
 		req.PersonaName, req.PersonaTone, req.PersonaHistory, req.PersonaThoughts); err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	u, err := h.Users.GetByID(c.Request.Context(), uid)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	owned, _ := h.Users.PurchasedCosmetics(c.Request.Context(), uid)
+	if owned == nil {
+		owned = []string{}
+	}
+	Respond(c, http.StatusOK, buildMeResponse(u, owned))
+}
+
+type setStatsPublicReq struct {
+	Public bool `json:"public"`
+}
+
+// SetStatsPublic 은 쇼케이스에서 본인 통계 노출 여부를 토글한다.
+// true → 다른 사용자가 /showcase/:user_id 에서 등급/스트릭/잔디/추이를 볼 수 있음.
+// false → 쇼케이스 응답에서 통계 섹션이 빠지고 본인 페이지에만 보임.
+func (h *MeHandler) SetStatsPublic(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	req, ok := BindAndValidate[setStatsPublicReq](c, nil)
+	if !ok {
+		return
+	}
+	if err := h.Users.SetStatsPublic(c.Request.Context(), uid, req.Public); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
