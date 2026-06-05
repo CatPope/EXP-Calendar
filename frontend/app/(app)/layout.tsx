@@ -11,7 +11,6 @@ import {
   LogOut,
   Settings,
   ListChecks,
-  BarChart3,
   Gift
 } from "lucide-react";
 import { Api, humanizeError } from "@/lib/api";
@@ -31,7 +30,6 @@ const NAV = [
   { href: "/shop", labelKey: "navShop", icon: ShoppingBag },
   { href: "/summon", labelKey: "navSummon", icon: Gift },
   { href: "/identity", labelKey: "navIdentity", icon: Sparkles },
-  { href: "/stats", labelKey: "navStats", icon: BarChart3 },
   { href: "/showcase", labelKey: "navShowcase", icon: Users },
   { href: "/settings", labelKey: "settings", icon: Settings }
 ];

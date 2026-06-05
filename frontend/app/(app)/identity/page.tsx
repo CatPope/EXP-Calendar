@@ -1,24 +1,156 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Sparkles, Crown, AlertTriangle, Wand2, Send, Palette } from "lucide-react";
+import {
+  Sparkles,
+  Crown,
+  AlertTriangle,
+  Wand2,
+  Send,
+  Palette,
+  Flame,
+  Trophy,
+  TrendingUp,
+} from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import CosmeticAvatar from "@/components/CosmeticAvatar";
 import TitleBadge from "@/components/TitleBadge";
+import GrassGraph from "@/components/GrassGraph";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import { useT } from "@/lib/i18n";
-import type { UserTitle, StatsSummary } from "@/lib/types";
+import type { UserTitle, StatsSummary, SeriesPoint } from "@/lib/types";
 import { skinById } from "@/lib/character";
 import type { SkinId } from "@/lib/character";
+
+interface DisplayPoint {
+  key: string;
+  label: string;
+  success: number;
+  fail: number;
+}
+
+const GRADES = ["D", "C", "B", "A", "S"] as const;
+
+function gradeIndex(grade: string): number {
+  const i = GRADES.indexOf(grade?.toUpperCase() as (typeof GRADES)[number]);
+  return i < 0 ? 0 : i;
+}
+
+const PERIODS: { key: "week" | "month" | "year"; labelKey: string }[] = [
+  { key: "week", labelKey: "insights.periodWeek" },
+  { key: "month", labelKey: "insights.periodMonth" },
+  { key: "year", labelKey: "insights.periodYear" },
+];
+
+// 월/연 추이는 한 차트 안에 success/fail 두 선을 겹쳐 그린다.
+// 외부 차트 라이브러리를 쓰지 않고 SVG 로 직접 렌더한다 (calendar 와 동일 정책).
+function TrendLineChart({
+  points,
+  showAllLabels,
+}: {
+  points: DisplayPoint[];
+  showAllLabels: boolean;
+}) {
+  const W = 600;
+  const H = 200;
+  const PAD = { l: 32, r: 12, t: 12, b: 28 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+  const rawMax = points.reduce(
+    (m, p) => Math.max(m, p.success, p.fail),
+    0
+  );
+  const max = Math.max(1, rawMax);
+  const n = points.length;
+  const xAt = (i: number) =>
+    PAD.l + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const yAt = (v: number) => PAD.t + innerH - (v / max) * innerH;
+  const buildPath = (key: "success" | "fail") =>
+    points
+      .map(
+        (p, i) =>
+          `${i === 0 ? "M" : "L"}${xAt(i).toFixed(2)},${yAt(p[key]).toFixed(2)}`
+      )
+      .join(" ");
+  const ticks = [0, Math.round(max / 2), max];
+  const labelStep = showAllLabels ? 1 : Math.max(1, Math.ceil(n / 7));
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-48" role="img">
+      {ticks.map((v, idx) => (
+        <g key={`tick-${idx}-${v}`}>
+          <line
+            x1={PAD.l}
+            x2={W - PAD.r}
+            y1={yAt(v)}
+            y2={yAt(v)}
+            stroke="rgb(var(--border-default))"
+            strokeDasharray="2 3"
+            strokeWidth={1}
+          />
+          <text
+            x={PAD.l - 4}
+            y={yAt(v) + 3}
+            fontSize={9}
+            textAnchor="end"
+            fill="rgb(var(--text-2))"
+            className="tabular-nums"
+          >
+            {v}
+          </text>
+        </g>
+      ))}
+      <path
+        d={buildPath("success")}
+        fill="none"
+        stroke="rgb(var(--success))"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path
+        d={buildPath("fail")}
+        fill="none"
+        stroke="rgb(var(--danger))"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {points.map((p, i) => (
+        <g key={`dot-${p.key}`}>
+          <circle cx={xAt(i)} cy={yAt(p.success)} r={2.5} fill="rgb(var(--success))" />
+          <circle cx={xAt(i)} cy={yAt(p.fail)} r={2.5} fill="rgb(var(--danger))" />
+        </g>
+      ))}
+      {points.map((p, i) => {
+        if (i % labelStep !== 0 && i !== n - 1) return null;
+        return (
+          <text
+            key={`lbl-${p.key}`}
+            x={xAt(i)}
+            y={H - 8}
+            fontSize={10}
+            textAnchor="middle"
+            fill="rgb(var(--text-2))"
+          >
+            {p.label}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
 
 export default function IdentityPage() {
   const t = useT();
   const user = useAppStore((s) => s.user);
   const pushToast = useAppStore((s) => s.pushToast);
+
+  // 통계 추이 기간 토글
+  const [period, setPeriod] = useState<"week" | "month" | "year">("week");
 
   // AI 페르소나 한마디 (변환 → 쇼케이스 게시)
   // 게시는 항상 "직전 변환 결과"를 그대로 올린다. 변환을 한 적이 없거나,
@@ -85,6 +217,77 @@ export default function IdentityPage() {
     error: summaryError,
     dismissError: dismissSummaryError,
   } = useAsyncData<StatsSummary>(() => Api.statsSummary(), []);
+
+  const {
+    data: grassData,
+    loading: grassLoading,
+    error: grassError,
+    dismissError: dismissGrassError,
+  } = useAsyncData<Record<string, number>>(() => Api.grass(365), []);
+
+  const {
+    data: series,
+    loading: seriesLoading,
+    error: seriesError,
+    dismissError: dismissSeriesError,
+  } = useAsyncData<SeriesPoint[]>(() => Api.series(period), [period]);
+
+  const gIdx = summary ? gradeIndex(summary.rating_grade) : 0;
+  const successPct = summary ? (summary.success_rate * 100).toFixed(1) : "0.0";
+
+  // Build display-ready points: aggregate year → 12 monthly buckets; format labels per period.
+  const displaySeries = useMemo<DisplayPoint[]>(() => {
+    if (!series || series.length === 0) return [];
+    if (period === "year") {
+      const buckets = new Map<string, { success: number; fail: number }>();
+      for (const p of series) {
+        const monthKey = p.date.slice(0, 7);
+        const b = buckets.get(monthKey) ?? { success: 0, fail: 0 };
+        b.success += p.success;
+        b.fail += p.fail;
+        buckets.set(monthKey, b);
+      }
+      const sorted = Array.from(buckets.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(-12);
+      return sorted.map(([monthKey, val]) => {
+        const m = parseInt(monthKey.slice(5), 10);
+        return {
+          key: monthKey,
+          label: t(`insights.month${m}`),
+          success: val.success,
+          fail: val.fail,
+        };
+      });
+    }
+    if (period === "week") {
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      return series.map((p) => {
+        const d = new Date(p.date + "T00:00:00");
+        const dayAbbr = dayNames[d.getDay()];
+        const md = p.date.slice(5).replace("-", "/");
+        return {
+          key: p.date,
+          label: `${dayAbbr} ${md}`,
+          success: p.success,
+          fail: p.fail,
+        };
+      });
+    }
+    return series.map((p) => ({
+      key: p.date,
+      label: String(parseInt(p.date.slice(8), 10)),
+      success: p.success,
+      fail: p.fail,
+    }));
+  }, [series, period, t]);
+
+  const seriesMax = displaySeries.reduce(
+    (m, p) => Math.max(m, p.success, p.fail),
+    0
+  );
+  const barWidth = (v: number) =>
+    seriesMax > 0 ? `${Math.max((v / seriesMax) * 100, v > 0 ? 2 : 0)}%` : "0%";
 
   const activeTitles = (titles ?? []).filter(
     (ut) => ut.is_equipped || ut.is_displayed
@@ -217,6 +420,230 @@ export default function IdentityPage() {
           </div>
         </div>
       </div>
+
+      {/* === 통계 흡수 섹션 ============================================== */}
+
+      {/* RATING GAUGE */}
+      <div className="card space-y-3">
+        <h2 className="text-sm font-semibold text-text-2 flex items-center gap-1.5">
+          <Sparkles className="h-3.5 w-3.5 text-accent" />
+          {t("insights.statsTitle")}
+        </h2>
+        {summaryLoading ? (
+          <Spinner block label={t("insights.loadingGrade")} />
+        ) : summary ? (
+          <>
+            <div className="flex items-end gap-4">
+              <div className="flex flex-col items-center">
+                <span className="text-5xl font-bold text-accent leading-none">
+                  {summary.rating_grade?.toUpperCase() || "D"}
+                </span>
+                <span className="text-[10px] text-text-2 mt-1">{t("insights.currentGrade")}</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-text-2">{t("insights.successRate")}</p>
+                <p className="text-2xl font-semibold text-gold">{successPct}%</p>
+                {typeof summary.percentile === "number" && (
+                  <p className="text-xs text-accent font-semibold mt-0.5">
+                    {t("insights.topPercentile", { n: summary.percentile })}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-1.5">
+              {GRADES.map((g, i) => (
+                <div key={g} className="flex-1 flex flex-col items-center gap-1">
+                  <div
+                    className={`h-2 w-full rounded-full ${
+                      i <= gIdx ? "bg-accent" : "bg-surface-2"
+                    }`}
+                  />
+                  <span
+                    className={`text-[10px] ${
+                      i === gIdx ? "text-accent font-semibold" : "text-text-2"
+                    }`}
+                  >
+                    {g}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {summary.next_grade ? (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-text-2">
+                  <span>
+                    {t("insights.toNextGrade", {
+                      grade: summary.next_grade,
+                      n: Math.max(0, 100 - summary.next_grade_pct),
+                    })}
+                  </span>
+                  <span className="text-accent font-semibold">
+                    {summary.next_grade_pct}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-surface-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-500"
+                    style={{ width: `${Math.min(100, summary.next_grade_pct)}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-gold font-semibold">
+                {t("insights.maxGrade")}
+              </p>
+            )}
+          </>
+        ) : null}
+      </div>
+
+      {/* STREAK */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="card flex items-center gap-3">
+          <Flame className="h-7 w-7 text-danger shrink-0" />
+          <div>
+            <p className="text-xs text-text-2">{t("insights.currentStreak")}</p>
+            <p className="text-lg font-semibold text-text-1">
+              {t("insights.streakDays", { n: summary?.current_streak ?? 0 })}
+            </p>
+          </div>
+        </div>
+        <div className="card flex items-center gap-3">
+          <Trophy className="h-7 w-7 text-gold shrink-0" />
+          <div>
+            <p className="text-xs text-text-2">{t("insights.longestStreak")}</p>
+            <p className="text-lg font-semibold text-text-1">
+              {t("insights.streakDays", { n: summary?.longest_streak ?? 0 })}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* TOTALS */}
+      <div className="card">
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <p className="text-2xl font-bold text-success">
+              {summary?.total_completed ?? 0}
+            </p>
+            <p className="text-xs text-text-2">{t("insights.completed")}</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-danger">
+              {summary?.total_failed ?? 0}
+            </p>
+            <p className="text-xs text-text-2">{t("insights.failed")}</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-gold">{successPct}%</p>
+            <p className="text-xs text-text-2">{t("insights.successRate")}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* GRASS */}
+      <div className="card space-y-3">
+        <h2 className="font-semibold">{t("insights.activityGrass")}</h2>
+        {grassError ? (
+          <ErrorBanner message={grassError} onDismiss={dismissGrassError} />
+        ) : grassLoading ? (
+          <Spinner block label={t("insights.loadingActivity")} />
+        ) : (
+          <GrassGraph data={grassData ?? {}} days={365} />
+        )}
+      </div>
+
+      {/* SERIES */}
+      <div className="card space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold inline-flex items-center gap-1.5">
+            <TrendingUp className="h-4 w-4 text-accent" />
+            {t("insights.periodTrend")}
+          </h2>
+          <div className="flex gap-1">
+            {PERIODS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPeriod(p.key)}
+                className={`text-xs rounded-full px-3 py-1 transition-colors ${
+                  p.key === period
+                    ? "bg-accent text-white"
+                    : "bg-surface-2 text-text-2 hover:bg-border"
+                }`}
+              >
+                {t(p.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {seriesError ? (
+          <ErrorBanner message={seriesError} onDismiss={dismissSeriesError} />
+        ) : seriesLoading ? (
+          <Spinner block label={t("insights.loadingTrend")} />
+        ) : displaySeries.length === 0 ? (
+          <p className="text-center text-text-2 text-sm py-4">
+            {t("insights.noData")}
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-3 text-[10px] text-text-2 mb-1">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-success" />
+                {t("insights.trendSuccess")}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-danger" />
+                {t("insights.trendFail")}
+              </span>
+            </div>
+            {period === "week" ? (
+              displaySeries.map((p) => (
+                <div key={p.key} className="flex items-center gap-2">
+                  <span
+                    className="text-[10px] text-text-2 shrink-0 tabular-nums text-right"
+                    style={{ width: "4.5rem" }}
+                  >
+                    {p.label}
+                  </span>
+                  <div className="flex-1 space-y-0.5">
+                    <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: barWidth(p.success),
+                          backgroundColor: "#06D6A0",
+                        }}
+                      />
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: barWidth(p.fail),
+                          backgroundColor: "#FF6B6B",
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-text-2 w-10 shrink-0 text-right tabular-nums">
+                    <span className="text-success">{p.success}</span>
+                    {" / "}
+                    <span className="text-danger">{p.fail}</span>
+                  </span>
+                </div>
+              ))
+            ) : (
+              <TrendLineChart
+                points={displaySeries}
+                showAllLabels={period === "year"}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* === /통계 흡수 ================================================ */}
 
       {/* Active Titles */}
       <div className="card space-y-3">
