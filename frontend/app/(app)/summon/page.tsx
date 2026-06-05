@@ -143,13 +143,24 @@ export default function SummonPage() {
       {infoLoading ? (
         <Spinner block label={t("character.loadingSummonInfo")} />
       ) : info ? (
-        <div className="card space-y-4">
-          <div className="flex items-center gap-2 text-gold">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-sm font-semibold">
-              {t("character.pickupBanner")}
-            </span>
+        <div className="card space-y-4 p-0 overflow-hidden">
+          {/* 픽업 배너 이미지 — LEGENDARY 강조 비주얼 */}
+          <div className="relative w-full aspect-[16/9] bg-surface-2">
+            <img
+              src="/legendary-banner.png"
+              alt={t("character.pickupBanner")}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-surface/95 via-surface/40 to-transparent" />
+            <div className="absolute bottom-2 left-3 right-3 flex items-center gap-2 text-gold drop-shadow">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-semibold">
+                {t("character.pickupBanner")}
+              </span>
+            </div>
           </div>
+
+          <div className="px-4 pb-4 space-y-4">
 
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs text-text-2">
@@ -185,6 +196,7 @@ export default function SummonPage() {
               <Ticket className="h-4 w-4 text-accent" />
               {t("character.ticketsCount", { n: info.tickets })}
             </span>
+          </div>
           </div>
         </div>
       ) : null}
