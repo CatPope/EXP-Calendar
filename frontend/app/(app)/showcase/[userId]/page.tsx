@@ -141,13 +141,6 @@ export default function ShowcaseDetailPage() {
     }));
   }, [series, period, t]);
 
-  const seriesMax = displaySeries.reduce(
-    (m, p) => Math.max(m, p.success, p.fail),
-    0
-  );
-  const barWidth = (v: number) =>
-    seriesMax > 0 ? `${Math.max((v / seriesMax) * 100, v > 0 ? 2 : 0)}%` : "0%";
-
   return (
     <div className="space-y-4">
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
@@ -392,48 +385,10 @@ export default function ShowcaseDetailPage() {
                         {t("insights.trendFail")}
                       </span>
                     </div>
-                    {period === "week" ? (
-                      displaySeries.map((p) => (
-                        <div key={p.key} className="flex items-center gap-2">
-                          <span
-                            className="text-[10px] text-text-2 shrink-0 tabular-nums text-right"
-                            style={{ width: "4.5rem" }}
-                          >
-                            {p.label}
-                          </span>
-                          <div className="flex-1 space-y-0.5">
-                            <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all duration-300"
-                                style={{
-                                  width: barWidth(p.success),
-                                  backgroundColor: "#06D6A0",
-                                }}
-                              />
-                            </div>
-                            <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all duration-300"
-                                style={{
-                                  width: barWidth(p.fail),
-                                  backgroundColor: "#FF6B6B",
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-text-2 w-10 shrink-0 text-right tabular-nums">
-                            <span className="text-success">{p.success}</span>
-                            {" / "}
-                            <span className="text-danger">{p.fail}</span>
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <TrendLineChart
-                        points={displaySeries}
-                        showAllLabels={period === "year"}
-                      />
-                    )}
+                    <TrendLineChart
+                      points={displaySeries}
+                      showAllLabels={period !== "month"}
+                    />
                   </div>
                 )}
               </div>
