@@ -69,6 +69,13 @@ export const character: NamespaceDict = {
     equipped: "적용중",
     equip: "적용",
     equipChangeHint: "장착·변경은 [페르소나 › 스킨 변경]에서",
+    // ── character customize page ──
+    customizeTitle: "스킨 변경",
+    customizeSubtitle: "보유 중인 캐릭터 스킨을 장착하세요. 미보유 스킨은 뽑기에서 획득할 수 있습니다.",
+    ownedEmpty: "아직 보유한 캐릭터가 없습니다. 뽑기 화면에서 새 캐릭터를 획득해 보세요.",
+    goToSummon: "뽑기 화면으로",
+    gotoSummonHint: "새 스킨을 얻으려면 뽑기로 이동하세요.",
+    equipOnCustomizePage: "장착은 스킨 변경 화면에서",
     // ── avatar ──
     avatarLabel: "Lv.{level} {label} 스킨"
   },
@@ -139,6 +146,13 @@ export const character: NamespaceDict = {
     equipped: "Applied",
     equip: "Apply",
     equipChangeHint: "Change skin in [Persona › Change Skin]",
+    // ── character customize page ──
+    customizeTitle: "Change Skin",
+    customizeSubtitle: "Equip one of the character skins you own. New skins can be obtained from the gacha screen.",
+    ownedEmpty: "You don't own any characters yet. Try the gacha screen to get new ones.",
+    goToSummon: "Go to Gacha",
+    gotoSummonHint: "To unlock new skins, head over to the gacha screen.",
+    equipOnCustomizePage: "Equip on the Change Skin page",
     // ── avatar ──
     avatarLabel: "Lv.{level} {label} skin"
   },
@@ -209,6 +223,13 @@ export const character: NamespaceDict = {
     equipped: "適用中",
     equip: "適用",
     equipChangeHint: "装備・変更は[ペルソナ › スキン変更]から",
+    // ── character customize page ──
+    customizeTitle: "スキン変更",
+    customizeSubtitle: "所持しているキャラクタースキンを装着してください。未所持のスキンはガチャで入手できます。",
+    ownedEmpty: "まだキャラクターを所持していません。ガチャ画面で新しいキャラクターを獲得してください。",
+    goToSummon: "ガチャ画面へ",
+    gotoSummonHint: "新しいスキンを獲得するにはガチャへ移動してください。",
+    equipOnCustomizePage: "装着はスキン変更画面で",
     // ── avatar ──
     avatarLabel: "Lv.{level} {label} スキン"
   }

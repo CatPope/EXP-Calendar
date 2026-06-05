@@ -273,7 +273,7 @@ export default function IdentitySettingsPage() {
           <div className="flex-1 space-y-2">
             <p className="text-sm font-medium text-text-1">{skinDef.label}</p>
             <Link
-              href="/summon"
+              href="/character"
               className="inline-flex items-center gap-1 text-xs btn-ghost"
             >
               ◈ {t("identity.changeSkin")} →

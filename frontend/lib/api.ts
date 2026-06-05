@@ -310,10 +310,13 @@ export const Api = {
         })
       }
     ),
-  postShowcase: (text: string) =>
+  // 변환 결과(llm_output)는 미리 generatePersona 로 받은 값을 그대로 넘긴다.
+  // 서버는 LLM 을 다시 돌리지 않고 받은 결과를 그대로 게시한다 — 미리 보기와
+  // 게시 결과가 항상 일치하도록 보장.
+  postShowcase: (text: string, llm_output: string) =>
     apiFetch<{ showcase_text: string; llm_output: string; used_definition: boolean }>(
       "/api/persona/showcase",
-      { method: "POST", body: JSON.stringify({ text }) }
+      { method: "POST", body: JSON.stringify({ text, llm_output }) }
     ),
   definePersona: (definition: string) =>
     apiFetch<{ persona_definition: string; persona_tokens: number }>(

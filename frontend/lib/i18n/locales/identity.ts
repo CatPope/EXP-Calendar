@@ -91,8 +91,8 @@ export const identity: NamespaceDict = {
     lockedHint: "조건 달성 시 획득",
 
     // AI 페르소나 한마디
-    aiTitle: "페르소나 한마디",
-    aiDesc: "하고 싶은 말을 입력하면 내 페르소나 말투로 변환해 쇼케이스에 게시합니다.",
+    aiTitle: "나의 한마디",
+    aiDesc: "하고 싶은 말을 입력하면 내 페르소나 말투로 변환해 쇼케이스/프로필에 게시합니다.",
     aiPlaceholder: "예: 오늘은 정말 열심히 했다.",
     aiCounter: "{n}/300",
     convert: "변환",
@@ -101,6 +101,7 @@ export const identity: NamespaceDict = {
     posting: "게시 중...",
     resultTitle: "변환 결과",
     aiPostSuccess: "쇼케이스에 게시되었습니다.",
+    aiNeedConvert: "먼저 변환 버튼을 눌러 결과를 확인한 뒤 게시해 주세요. 텍스트를 수정했다면 다시 변환이 필요합니다.",
 
     // cosmetics
     cosmeticSection: "코스메틱",
@@ -197,8 +198,8 @@ export const identity: NamespaceDict = {
     locked: "Locked",
     lockedHint: "Unlock by completing the condition",
 
-    aiTitle: "Persona One-liner",
-    aiDesc: "Type something and it's converted into your persona's voice and posted to your showcase.",
+    aiTitle: "My Voice",
+    aiDesc: "Type something and it's converted into your persona's voice and published to your showcase/profile.",
     aiPlaceholder: "e.g. I really worked hard today.",
     aiCounter: "{n}/300",
     convert: "Convert",
@@ -207,6 +208,7 @@ export const identity: NamespaceDict = {
     posting: "Posting...",
     resultTitle: "Converted Result",
     aiPostSuccess: "Posted to the showcase.",
+    aiNeedConvert: "Press Convert first to preview the result before publishing. If you edited the text, convert again.",
 
     // cosmetics
     cosmeticSection: "Cosmetics",
@@ -302,8 +304,8 @@ export const identity: NamespaceDict = {
     locked: "ロック中",
     lockedHint: "条件達成で取得可能",
 
-    aiTitle: "ペルソナの一言",
-    aiDesc: "言いたいことを入力すると、ペルソナの口調に変換してショーケースに投稿します。",
+    aiTitle: "私のひとこと",
+    aiDesc: "言いたいことを入力すると、ペルソナの口調に変換してショーケース・プロフィールに投稿します。",
     aiPlaceholder: "例：今日は本当に頑張った。",
     aiCounter: "{n}/300",
     convert: "変換",
@@ -312,6 +314,7 @@ export const identity: NamespaceDict = {
     posting: "投稿中...",
     resultTitle: "変換結果",
     aiPostSuccess: "ショーケースに投稿しました。",
+    aiNeedConvert: "先に変換ボタンを押して結果を確認してから投稿してください。テキストを編集した場合は再変換が必要です。",
 
     // cosmetics
     cosmeticSection: "コスメティック",

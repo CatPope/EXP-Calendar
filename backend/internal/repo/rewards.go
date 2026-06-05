@@ -41,14 +41,15 @@ func (r *RewardRepo) DeleteScheduleTx(ctx context.Context, tx pgx.Tx, userID, sc
 // GrassByDay returns dates within [from, to) mapped to activity counts.
 // Activity = schedule completions + quest claims (reward_log rows with source='QUEST').
 // Dates are bucketed by KST calendar day.
+// 일정은 "저장된 날짜(due_date)" 기준으로 집계한다 — 체크한 날짜가 아님.
 func (r *RewardRepo) GrassByDay(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]int, error) {
 	rows, err := r.Pool.Query(ctx,
 		`SELECT d, COUNT(*) FROM (
-		   -- schedule completions bucketed by KST date
-		   SELECT (completed_at AT TIME ZONE 'Asia/Seoul')::date AS d
+		   -- schedule completions bucketed by KST due_date (저장된 날짜)
+		   SELECT (due_date AT TIME ZONE 'Asia/Seoul')::date AS d
 		   FROM schedules
 		   WHERE user_id=$1 AND status='COMPLETED'
-		     AND completed_at >= $2 AND completed_at < $3
+		     AND due_date >= $2 AND due_date < $3
 		   UNION ALL
 		   -- quest claims bucketed by KST date
 		   SELECT (occurred_at AT TIME ZONE 'Asia/Seoul')::date AS d
@@ -78,6 +79,7 @@ func (r *RewardRepo) GrassByDay(ctx context.Context, userID uuid.UUID, from, to 
 // success = schedule completions + quest claims per KST day.
 // fail    = OVERDUE schedules per KST day (schedules only; quests have no fail state).
 // Dates are bucketed by KST calendar day; from/to are exclusive-upper-bound timestamps.
+// 일정은 "저장된 날짜(due_date)" 기준으로 집계한다 — 체크한 날짜가 아님.
 func (r *RewardRepo) SeriesByDay(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]map[string]any, error) {
 	rows, err := r.Pool.Query(ctx,
 		`SELECT d,
@@ -85,8 +87,9 @@ func (r *RewardRepo) SeriesByDay(ctx context.Context, userID uuid.UUID, from, to
 		   SUM(fail)    AS fail
 		 FROM (
 		   -- schedule rows: completed => success bucket, overdue => fail bucket
+		   -- 둘 다 due_date(저장된 날짜) 기준으로 버킷팅.
 		   SELECT
-		     (GREATEST(due_date, COALESCE(completed_at, due_date)) AT TIME ZONE 'Asia/Seoul')::date AS d,
+		     (due_date AT TIME ZONE 'Asia/Seoul')::date AS d,
 		     CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END AS success,
 		     CASE WHEN status='OVERDUE'   THEN 1 ELSE 0 END AS fail
 		   FROM schedules

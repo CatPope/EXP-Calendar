@@ -50,6 +50,8 @@ export default function WeekGrid({
     return Array.from({ length: 7 }, (_, i) => addDays(s, i));
   }, [cursor]);
 
+  // 같은 날짜의 일정을 모은다. due_date 의 (날짜 부분)을 기준으로 그룹화.
+  // 시간 슬롯 배치는 byDate 가 아니라 아래의 bucketHourFor() 가 결정한다.
   const byDate = useMemo(() => {
     const m: Record<string, Schedule[]> = {};
     for (const s of schedules) {
@@ -59,6 +61,30 @@ export default function WeekGrid({
     }
     return m;
   }, [schedules]);
+
+  // 일정의 시간 슬롯을 결정한다.
+  //  - start_time 이 있으면 그 시각의 hour 슬롯에 배치 (정확한 시간 범위 반영).
+  //  - start_time 이 없으면 "종일" 슬롯으로 (due_date 의 23:59 기본값 때문에
+  //    모든 일정이 23시 행에 몰리던 버그를 막는다).
+  // null → all-day row.
+  function bucketHourFor(s: Schedule): number | null {
+    if (s.start_time) {
+      return new Date(s.start_time).getHours();
+    }
+    return null;
+  }
+
+  // 시간 범위 라벨 ("HH:MM" 또는 "HH:MM–HH:MM"). 없으면 빈 문자열.
+  function timeRangeLabel(s: Schedule): string {
+    if (!s.start_time) return "";
+    const fmt = (iso: string) => {
+      const d = new Date(iso);
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    };
+    const start = fmt(s.start_time);
+    if (!s.end_time) return start;
+    return `${start}–${fmt(s.end_time)}`;
+  }
 
   // ---- HTML5 card-drag handlers (existing move logic) ----
   function onDragStart(s: Schedule, e: React.DragEvent) {
@@ -182,6 +208,39 @@ export default function WeekGrid({
       </div>
       <div className="max-h-[600px] overflow-auto">
         <div className="grid grid-cols-[60px_repeat(7,1fr)] relative">
+          {/* 종일(시작 시간 미설정) 행 — due_date 만 있는 일정은 여기 표시 */}
+          <div className="border-b border-border bg-surface-2/30 px-2 py-1 text-[10px] text-text-2 text-right">
+            {t("calendar.allDay")}
+          </div>
+          {days.map((d) => {
+            const key = toYMD(d);
+            const allDay = (byDate[key] || []).filter(
+              (s) => bucketHourFor(s) === null
+            );
+            return (
+              <div
+                key={`allday-${key}`}
+                className="min-h-[36px] border-b border-r border-border/50 last:border-r-0 bg-surface-2/30 p-0.5"
+                onDragOver={onDragOver}
+                onDrop={(e) => onDrop(key, e)}
+              >
+                <div className="space-y-1">
+                  {allDay.map((s) => (
+                    <ScheduleCard
+                      key={s.id}
+                      schedule={s}
+                      compact
+                      draggable
+                      onDragStart={onDragStart}
+                      onComplete={onCompleteSchedule}
+                      onEdit={onEditSchedule}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
           {HOURS.map((h) => (
             <div key={`hour-${h}`} className="contents">
               <div className="border-b border-border/50 px-2 py-1 text-[10px] text-text-2 text-right">
@@ -189,10 +248,9 @@ export default function WeekGrid({
               </div>
               {days.map((d) => {
                 const key = toYMD(d);
-                const list = (byDate[key] || []).filter((s) => {
-                  const dt = new Date(s.due_date);
-                  return dt.getHours() === h;
-                });
+                const list = (byDate[key] || []).filter(
+                  (s) => bucketHourFor(s) === h
+                );
                 const highlighted = isCellHighlighted(key, h);
                 return (
                   <button
@@ -211,17 +269,26 @@ export default function WeekGrid({
                     }`}
                   >
                     <div className="space-y-1">
-                      {list.map((s) => (
-                        <ScheduleCard
-                          key={s.id}
-                          schedule={s}
-                          compact
-                          draggable
-                          onDragStart={onDragStart}
-                          onComplete={onCompleteSchedule}
-                          onEdit={onEditSchedule}
-                        />
-                      ))}
+                      {list.map((s) => {
+                        const range = timeRangeLabel(s);
+                        return (
+                          <div key={s.id} className="space-y-0.5">
+                            {range && (
+                              <div className="text-[9px] text-text-2 px-1 leading-none tabular-nums">
+                                {range}
+                              </div>
+                            )}
+                            <ScheduleCard
+                              schedule={s}
+                              compact
+                              draggable
+                              onDragStart={onDragStart}
+                              onComplete={onCompleteSchedule}
+                              onEdit={onEditSchedule}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </button>
                 );

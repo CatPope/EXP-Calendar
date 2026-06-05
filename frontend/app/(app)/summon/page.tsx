@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Gift, Sparkles, Ticket, Star } from "lucide-react";
+import Link from "next/link";
+import { Gift, Sparkles, Ticket, Star, ChevronRight } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import CharacterAvatar from "@/components/CharacterAvatar";
@@ -110,20 +111,7 @@ export default function SummonPage() {
     }
   }
 
-  async function equip(id: string) {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await Api.summonEquip(id);
-      pushToast("success", t("character.equipDone"));
-      reloadCollection();
-      refreshUser();
-    } catch (e) {
-      pushToast("error", humanizeError(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  // 장착(equip)은 /character 화면 전용. 뽑기 화면은 보유/미보유만 표시한다.
 
   const ownedById = new Map<string, OwnedCharacter>(
     (collection?.owned ?? []).map((o) => [o.id, o])
@@ -332,14 +320,17 @@ export default function SummonPage() {
         </div>
       )}
 
-      {/* COLLECTION */}
+      {/* COLLECTION (보유/미보유 표시 전용. 장착은 /character 에서) */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Star className="h-4 w-4 text-gold" />
           <h2 className="text-sm font-semibold text-text-1">{t("character.collection")}</h2>
-          <span className="ml-auto text-[10px] text-text-2">
-            {t("character.equipChangeHint")}
-          </span>
+          <Link
+            href="/character"
+            className="ml-auto text-[10px] text-accent hover:underline inline-flex items-center gap-0.5"
+          >
+            {t("character.equipOnCustomizePage")} <ChevronRight className="h-3 w-3" />
+          </Link>
         </div>
 
         {colError && (
@@ -390,18 +381,10 @@ export default function SummonPage() {
                       n: owned.count,
                     })}
                   </span>
-                  {owned.equipped ? (
+                  {owned.equipped && (
                     <span className="text-[10px] text-accent inline-flex items-center gap-0.5">
                       <Star className="h-3 w-3" /> {t("character.equipped")}
                     </span>
-                  ) : (
-                    <button
-                      disabled={busy}
-                      onClick={() => equip(c.id)}
-                      className="text-[10px] rounded px-2 py-0.5 bg-accent text-white hover:opacity-90 disabled:opacity-50"
-                    >
-                      {t("character.equip")}
-                    </button>
                   )}
                 </div>
               );

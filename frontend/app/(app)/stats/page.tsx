@@ -31,6 +31,119 @@ const PERIODS: { key: "week" | "month" | "year"; labelKey: string }[] = [
   { key: "year", labelKey: "insights.periodYear" },
 ];
 
+// 월/연 추이는 한 차트 안에 success/fail 두 선을 겹쳐 그린다.
+// 외부 차트 라이브러리를 쓰지 않고 SVG 로 직접 렌더한다 (calendar 와 동일 정책).
+function TrendLineChart({
+  points,
+  showAllLabels,
+}: {
+  points: DisplayPoint[];
+  showAllLabels: boolean;
+}) {
+  const W = 600;
+  const H = 200;
+  const PAD = { l: 32, r: 12, t: 12, b: 28 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+  const rawMax = points.reduce(
+    (m, p) => Math.max(m, p.success, p.fail),
+    0
+  );
+  const max = Math.max(1, rawMax);
+  const n = points.length;
+  const xAt = (i: number) =>
+    PAD.l + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const yAt = (v: number) => PAD.t + innerH - (v / max) * innerH;
+  const buildPath = (key: "success" | "fail") =>
+    points
+      .map(
+        (p, i) =>
+          `${i === 0 ? "M" : "L"}${xAt(i).toFixed(2)},${yAt(p[key]).toFixed(2)}`
+      )
+      .join(" ");
+
+  const ticks = [0, Math.round(max / 2), max];
+  const labelStep = showAllLabels ? 1 : Math.max(1, Math.ceil(n / 7));
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-48" role="img">
+      {ticks.map((v, idx) => (
+        <g key={`tick-${idx}-${v}`}>
+          <line
+            x1={PAD.l}
+            x2={W - PAD.r}
+            y1={yAt(v)}
+            y2={yAt(v)}
+            stroke="rgb(var(--border-default))"
+            strokeDasharray="2 3"
+            strokeWidth={1}
+          />
+          <text
+            x={PAD.l - 4}
+            y={yAt(v) + 3}
+            fontSize={9}
+            textAnchor="end"
+            fill="rgb(var(--text-2))"
+            className="tabular-nums"
+          >
+            {v}
+          </text>
+        </g>
+      ))}
+
+      <path
+        d={buildPath("success")}
+        fill="none"
+        stroke="rgb(var(--success))"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path
+        d={buildPath("fail")}
+        fill="none"
+        stroke="rgb(var(--danger))"
+        strokeWidth={2}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+
+      {points.map((p, i) => (
+        <g key={`dot-${p.key}`}>
+          <circle
+            cx={xAt(i)}
+            cy={yAt(p.success)}
+            r={2.5}
+            fill="rgb(var(--success))"
+          />
+          <circle
+            cx={xAt(i)}
+            cy={yAt(p.fail)}
+            r={2.5}
+            fill="rgb(var(--danger))"
+          />
+        </g>
+      ))}
+
+      {points.map((p, i) => {
+        if (i % labelStep !== 0 && i !== n - 1) return null;
+        return (
+          <text
+            key={`lbl-${p.key}`}
+            x={xAt(i)}
+            y={H - 8}
+            fontSize={10}
+            textAnchor="middle"
+            fill="rgb(var(--text-2))"
+          >
+            {p.label}
+          </text>
+        );
+      })}
+    </svg>
+  );
+}
+
 export default function StatsPage() {
   const t = useT();
   const user = useAppStore((s) => s.user);
@@ -395,41 +508,48 @@ export default function StatsPage() {
                 {t("insights.trendFail")}
               </span>
             </div>
-            {displaySeries.map((p) => (
-              <div key={p.key} className="flex items-center gap-2">
-                <span
-                  className="text-[10px] text-text-2 shrink-0 tabular-nums text-right"
-                  style={{ width: period === "week" ? "4.5rem" : "1.75rem" }}
-                >
-                  {p.label}
-                </span>
-                <div className="flex-1 space-y-0.5">
-                  <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: barWidth(p.success),
-                        backgroundColor: "#06D6A0",
-                      }}
-                    />
+            {period === "week" ? (
+              displaySeries.map((p) => (
+                <div key={p.key} className="flex items-center gap-2">
+                  <span
+                    className="text-[10px] text-text-2 shrink-0 tabular-nums text-right"
+                    style={{ width: "4.5rem" }}
+                  >
+                    {p.label}
+                  </span>
+                  <div className="flex-1 space-y-0.5">
+                    <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: barWidth(p.success),
+                          backgroundColor: "#06D6A0",
+                        }}
+                      />
+                    </div>
+                    <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: barWidth(p.fail),
+                          backgroundColor: "#FF6B6B",
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: barWidth(p.fail),
-                        backgroundColor: "#FF6B6B",
-                      }}
-                    />
-                  </div>
+                  <span className="text-[10px] text-text-2 w-10 shrink-0 text-right tabular-nums">
+                    <span className="text-success">{p.success}</span>
+                    {" / "}
+                    <span className="text-danger">{p.fail}</span>
+                  </span>
                 </div>
-                <span className="text-[10px] text-text-2 w-10 shrink-0 text-right tabular-nums">
-                  <span className="text-success">{p.success}</span>
-                  {" / "}
-                  <span className="text-danger">{p.fail}</span>
-                </span>
-              </div>
-            ))}
+              ))
+            ) : (
+              <TrendLineChart
+                points={displaySeries}
+                showAllLabels={period === "year"}
+              />
+            )}
           </div>
         )}
       </div>

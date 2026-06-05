@@ -198,9 +198,13 @@ UserTitle:
 - `GEMINI_API_KEY` 없을 시 deterministic mock 사용
 
 ### POST /api/persona/showcase
-- body: `{ "text": "string" }`  ← 사용자가 쇼케이스에 게시할 원문
+- body: `{ "text": "string", "llm_output": "string" }`
+  - `text` — 사용자가 입력한 원문
+  - `llm_output` — 클라이언트가 직전에 `/api/persona/generate` 로 받은 변환 결과 (필수)
 - res: `{ data: { showcase_text, llm_output, used_definition: bool } }`
-- **항상 저장된 `persona_definition` 사용** — 클라이언트의 character_type/definition hint 무시 (FR-SHOP-03 monetization 경계)
+- **LLM 을 재호출하지 않는다** — 받은 `llm_output` 을 그대로 저장. 사용자에게 보여준 "변환 결과(미리보기)" 와 "게시 결과"가 항상 동일하도록 보장.
+- 두 필드 중 하나라도 비어 있으면 400 → 클라이언트는 게시 전에 반드시 변환(`/generate`)을 거쳐야 한다.
+- 모네타이제이션 경계(FR-SHOP-03)는 `/generate` 가 (definition override 없이) 저장된 persona 로만 호출되도록 UI 가 보장한다.
 
 ### GET /api/showcase/:user_id
 - res:

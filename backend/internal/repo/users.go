@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// truncateRunes returns s clipped to at most max Unicode runes (not bytes).
+func truncateRunes(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max])
+}
+
 type UserRepo struct{ Pool *pgxpool.Pool }
 
 func NewUserRepo(p *pgxpool.Pool) *UserRepo { return &UserRepo{Pool: p} }
@@ -135,8 +147,11 @@ func (r *UserRepo) SetPersonaCharacterType(ctx context.Context, id uuid.UUID, ch
 }
 
 func (r *UserRepo) SetPersonaShowcase(ctx context.Context, id uuid.UUID, showcaseText, llmOutput string) error {
-	_, err := r.Pool.Exec(ctx, `UPDATE users SET persona_showcase_text=$1, persona_llm_output=$2, updated_at=now() WHERE id=$3`,
-		showcaseText, llmOutput, id)
+	// "나의 한마디" 통일: 통계 화면의 status_message 와 페르소나 화면의 persona_llm_output 은
+	// 같은 의미이므로 게시 시 같이 갱신한다. status_message 는 최대 200자(rune) 제한.
+	status := truncateRunes(llmOutput, 200)
+	_, err := r.Pool.Exec(ctx, `UPDATE users SET persona_showcase_text=$1, persona_llm_output=$2, status_message=$3, updated_at=now() WHERE id=$4`,
+		showcaseText, llmOutput, status, id)
 	return err
 }
 
