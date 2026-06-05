@@ -29,6 +29,7 @@ export default function LoginPage() {
   const t = useT();
   const setUser = useAppStore((s) => s.setUser);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [mode, setMode] = useState<AuthMode>("login");
   const [err, setErr] = useState("");
@@ -92,10 +93,14 @@ export default function LoginPage() {
     setBusy(true);
     setErr("");
     const endpoint = mode === "signup" ? "/api/auth/dev-signup" : "/api/auth/dev-login";
+    const body =
+      mode === "signup"
+        ? { email, password, display_name: displayName }
+        : { email, password };
     try {
       const data = await apiFetch<AuthResponse>(endpoint, {
         method: "POST",
-        body: JSON.stringify({ email, display_name: displayName })
+        body: JSON.stringify(body)
       });
       setTokens(data.access_token, data.refresh_token);
       setUser(data.user);
@@ -147,6 +152,8 @@ export default function LoginPage() {
               {mode === "signup" ? t("common.devSignup") : t("common.devLogin")}
             </div>
             <input
+              type="email"
+              autoComplete="email"
               className="input w-full"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -154,12 +161,25 @@ export default function LoginPage() {
               required
             />
             <input
+              type="password"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               className="input w-full"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={t("common.displayNamePlaceholder")}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("common.passwordPlaceholder")}
               required
             />
+            {mode === "signup" && (
+              <input
+                type="text"
+                autoComplete="nickname"
+                className="input w-full"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={t("common.displayNamePlaceholder")}
+                required
+              />
+            )}
             <button type="submit" disabled={busy} className="btn-primary w-full flex items-center justify-center gap-2">
               {mode === "signup" ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
               {busy

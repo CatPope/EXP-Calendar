@@ -32,6 +32,7 @@ type googleLoginReq struct {
 type devLoginReq struct {
 	Email       string `json:"email"`
 	DisplayName string `json:"display_name"`
+	Password    string `json:"password"`
 }
 
 type refreshReq struct {
@@ -80,6 +81,10 @@ func (h *AuthHandler) Google(c *gin.Context) {
 
 // DevLogin authenticates an EXISTING account only. Unknown emails are rejected
 // with NEED_SIGNUP so the client can route to the signup flow.
+//
+// 비밀번호 정책:
+//   - 사용자가 password_hash 를 보유한 경우 → password 필수, bcrypt 비교.
+//   - 보유하지 않은 경우(legacy) → password 무시하고 로그인 허용.
 func (h *AuthHandler) DevLogin(c *gin.Context) {
 	if !h.Cfg.DevMode {
 		RespondErr(c, http.StatusForbidden, "DEV_MODE_DISABLED", "dev-login disabled")
@@ -103,6 +108,16 @@ func (h *AuthHandler) DevLogin(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
+	if u.PasswordHash != "" {
+		if req.Password == "" {
+			RespondErr(c, http.StatusBadRequest, "PASSWORD_REQUIRED", "비밀번호를 입력해 주세요.")
+			return
+		}
+		if !auth.VerifyPassword(u.PasswordHash, req.Password) {
+			RespondErr(c, http.StatusUnauthorized, "INVALID_PASSWORD", "비밀번호가 일치하지 않습니다.")
+			return
+		}
+	}
 	_ = h.Users.EnsureMinPoints(c.Request.Context(), u.ID, 999999)
 	_ = h.Users.EnsureMinPersonaTokens(c.Request.Context(), u.ID, 10)
 	h.issueTokens(c, u)
@@ -110,6 +125,7 @@ func (h *AuthHandler) DevLogin(c *gin.Context) {
 
 // DevSignup creates a NEW account. Existing emails are rejected with
 // ALREADY_EXISTS so the client can route to the login flow.
+// password 는 필수이며 bcrypt 로 hash 해 저장한다.
 func (h *AuthHandler) DevSignup(c *gin.Context) {
 	if !h.Cfg.DevMode {
 		RespondErr(c, http.StatusForbidden, "DEV_MODE_DISABLED", "dev-signup disabled")
@@ -118,6 +134,9 @@ func (h *AuthHandler) DevSignup(c *gin.Context) {
 	req, ok := BindAndValidate(c, func(r *devLoginReq) error {
 		if r.Email == "" {
 			return errors.New("email required")
+		}
+		if r.Password == "" {
+			return errors.New("password required")
 		}
 		return nil
 	})
@@ -135,8 +154,17 @@ func (h *AuthHandler) DevSignup(c *gin.Context) {
 	if dn == "" {
 		dn = req.Email
 	}
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "HASH_ERROR", err.Error())
+		return
+	}
 	u, err := h.Users.UpsertByEmail(c.Request.Context(), req.Email, dn, nil)
 	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	if err := h.Users.SetPasswordHash(c.Request.Context(), u.ID, hash); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
