@@ -63,6 +63,9 @@ type Title struct {
 	IconURL     string    `json:"icon_url"`
 	Description string    `json:"description,omitempty"`
 	Condition   string    `json:"-"`
+	// 사용자 컨텍스트(예: displayed_titles)에서만 채워지는 페널티 모디파이어.
+	// master 칭호 단독 조회 시엔 항상 비어 있다.
+	NegativeModifier *string `json:"negative_modifier,omitempty"`
 }
 
 // TitleCatalogEntry is one row of GET /api/titles/all [v1.4]:

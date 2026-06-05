@@ -122,12 +122,19 @@ export default function ShowcaseDetailPage() {
                   </div>
                 </div>
               </div>
-              <TitleBadge title={detail.equipped_title} />
+              <TitleBadge
+                title={detail.equipped_title}
+                modifier={detail.equipped_title?.negative_modifier}
+              />
             </div>
             {detail.displayed_titles?.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-2 border-t border-border">
                 {detail.displayed_titles.map((tt) => (
-                  <TitleBadge key={tt.id} title={tt} />
+                  <TitleBadge
+                    key={tt.id}
+                    title={tt}
+                    modifier={tt.negative_modifier}
+                  />
                 ))}
               </div>
             )}

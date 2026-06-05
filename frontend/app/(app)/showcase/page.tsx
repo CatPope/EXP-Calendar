@@ -104,7 +104,10 @@ export default function ShowcaseListPage() {
                 <div className="font-semibold truncate">{u.display_name}</div>
                 <div className="text-xs text-text-2">Lv. {u.level}</div>
                 <div className="mt-2">
-                  <TitleBadge title={u.equipped_title} />
+                  <TitleBadge
+                    title={u.equipped_title}
+                    modifier={u.equipped_title?.negative_modifier}
+                  />
                 </div>
               </div>
               <ChevronRight className="h-5 w-5 text-text-2 shrink-0" />
