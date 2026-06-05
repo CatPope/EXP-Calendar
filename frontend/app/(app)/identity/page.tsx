@@ -12,12 +12,15 @@ import {
   Flame,
   Trophy,
   TrendingUp,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import CosmeticAvatar from "@/components/CosmeticAvatar";
 import TitleBadge from "@/components/TitleBadge";
 import GrassGraph from "@/components/GrassGraph";
+import TrendLineChart, { type TrendPoint } from "@/components/insights/TrendLineChart";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
@@ -26,12 +29,7 @@ import type { UserTitle, StatsSummary, SeriesPoint } from "@/lib/types";
 import { skinById } from "@/lib/character";
 import type { SkinId } from "@/lib/character";
 
-interface DisplayPoint {
-  key: string;
-  label: string;
-  success: number;
-  fail: number;
-}
+type DisplayPoint = TrendPoint;
 
 const GRADES = ["D", "C", "B", "A", "S"] as const;
 
@@ -46,104 +44,6 @@ const PERIODS: { key: "week" | "month" | "year"; labelKey: string }[] = [
   { key: "year", labelKey: "insights.periodYear" },
 ];
 
-// 월/연 추이는 한 차트 안에 success/fail 두 선을 겹쳐 그린다.
-// 외부 차트 라이브러리를 쓰지 않고 SVG 로 직접 렌더한다 (calendar 와 동일 정책).
-function TrendLineChart({
-  points,
-  showAllLabels,
-}: {
-  points: DisplayPoint[];
-  showAllLabels: boolean;
-}) {
-  const W = 600;
-  const H = 200;
-  const PAD = { l: 32, r: 12, t: 12, b: 28 };
-  const innerW = W - PAD.l - PAD.r;
-  const innerH = H - PAD.t - PAD.b;
-  const rawMax = points.reduce(
-    (m, p) => Math.max(m, p.success, p.fail),
-    0
-  );
-  const max = Math.max(1, rawMax);
-  const n = points.length;
-  const xAt = (i: number) =>
-    PAD.l + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
-  const yAt = (v: number) => PAD.t + innerH - (v / max) * innerH;
-  const buildPath = (key: "success" | "fail") =>
-    points
-      .map(
-        (p, i) =>
-          `${i === 0 ? "M" : "L"}${xAt(i).toFixed(2)},${yAt(p[key]).toFixed(2)}`
-      )
-      .join(" ");
-  const ticks = [0, Math.round(max / 2), max];
-  const labelStep = showAllLabels ? 1 : Math.max(1, Math.ceil(n / 7));
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-48" role="img">
-      {ticks.map((v, idx) => (
-        <g key={`tick-${idx}-${v}`}>
-          <line
-            x1={PAD.l}
-            x2={W - PAD.r}
-            y1={yAt(v)}
-            y2={yAt(v)}
-            stroke="rgb(var(--border-default))"
-            strokeDasharray="2 3"
-            strokeWidth={1}
-          />
-          <text
-            x={PAD.l - 4}
-            y={yAt(v) + 3}
-            fontSize={9}
-            textAnchor="end"
-            fill="rgb(var(--text-2))"
-            className="tabular-nums"
-          >
-            {v}
-          </text>
-        </g>
-      ))}
-      <path
-        d={buildPath("success")}
-        fill="none"
-        stroke="rgb(var(--success))"
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <path
-        d={buildPath("fail")}
-        fill="none"
-        stroke="rgb(var(--danger))"
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      {points.map((p, i) => (
-        <g key={`dot-${p.key}`}>
-          <circle cx={xAt(i)} cy={yAt(p.success)} r={2.5} fill="rgb(var(--success))" />
-          <circle cx={xAt(i)} cy={yAt(p.fail)} r={2.5} fill="rgb(var(--danger))" />
-        </g>
-      ))}
-      {points.map((p, i) => {
-        if (i % labelStep !== 0 && i !== n - 1) return null;
-        return (
-          <text
-            key={`lbl-${p.key}`}
-            x={xAt(i)}
-            y={H - 8}
-            fontSize={10}
-            textAnchor="middle"
-            fill="rgb(var(--text-2))"
-          >
-            {p.label}
-          </text>
-        );
-      })}
-    </svg>
-  );
-}
-
 export default function IdentityPage() {
   const t = useT();
   const user = useAppStore((s) => s.user);
@@ -151,6 +51,26 @@ export default function IdentityPage() {
 
   // 통계 추이 기간 토글
   const [period, setPeriod] = useState<"week" | "month" | "year">("week");
+
+  // 쇼케이스 통계 공유 토글
+  const [statsPublicBusy, setStatsPublicBusy] = useState(false);
+  async function toggleStatsPublic() {
+    if (statsPublicBusy || !user) return;
+    setStatsPublicBusy(true);
+    const next = !user.stats_public;
+    try {
+      const updated = await Api.setStatsPublic(next);
+      useAppStore.getState().setUser(updated);
+      pushToast(
+        "success",
+        next ? t("identity.statsShareOnDone") : t("identity.statsShareOffDone")
+      );
+    } catch (e) {
+      pushToast("error", humanizeError(e));
+    } finally {
+      setStatsPublicBusy(false);
+    }
+  }
 
   // AI 페르소나 한마디 (변환 → 쇼케이스 게시)
   // 게시는 항상 "직전 변환 결과"를 그대로 올린다. 변환을 한 적이 없거나,
@@ -425,10 +345,32 @@ export default function IdentityPage() {
 
       {/* RATING GAUGE */}
       <div className="card space-y-3">
-        <h2 className="text-sm font-semibold text-text-2 flex items-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5 text-accent" />
-          {t("insights.statsTitle")}
-        </h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-text-2 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-accent" />
+            {t("insights.statsTitle")}
+          </h2>
+          <button
+            type="button"
+            onClick={toggleStatsPublic}
+            disabled={statsPublicBusy}
+            className={`text-[11px] rounded-full px-3 py-1 inline-flex items-center gap-1 transition-colors disabled:opacity-50 ${
+              user?.stats_public
+                ? "bg-accent/15 text-accent border border-accent/40 hover:bg-accent/25"
+                : "bg-surface-2 text-text-2 border border-border hover:border-accent/40"
+            }`}
+            title={t("identity.statsShareDesc")}
+          >
+            {user?.stats_public ? (
+              <Eye className="h-3 w-3" />
+            ) : (
+              <EyeOff className="h-3 w-3" />
+            )}
+            {user?.stats_public
+              ? t("identity.statsShareOn")
+              : t("identity.statsShareOff")}
+          </button>
+        </div>
         {summaryLoading ? (
           <Spinner block label={t("insights.loadingGrade")} />
         ) : summary ? (

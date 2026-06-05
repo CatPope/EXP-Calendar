@@ -102,6 +102,11 @@ export const identity: NamespaceDict = {
     resultTitle: "변환 결과",
     aiPostSuccess: "쇼케이스에 게시되었습니다.",
     aiNeedConvert: "먼저 변환 버튼을 눌러 결과를 확인한 뒤 게시해 주세요. 텍스트를 수정했다면 다시 변환이 필요합니다.",
+    statsShareOn: "통계 공개",
+    statsShareOff: "통계 비공개",
+    statsShareDesc: "쇼케이스에서 다른 사용자가 내 통계를 볼 수 있는지 여부",
+    statsShareOnDone: "이제 다른 사용자가 내 통계를 볼 수 있습니다.",
+    statsShareOffDone: "다른 사용자에게 통계가 숨겨집니다.",
 
     // cosmetics
     cosmeticSection: "코스메틱",
@@ -209,6 +214,11 @@ export const identity: NamespaceDict = {
     resultTitle: "Converted Result",
     aiPostSuccess: "Posted to the showcase.",
     aiNeedConvert: "Press Convert first to preview the result before publishing. If you edited the text, convert again.",
+    statsShareOn: "Stats Public",
+    statsShareOff: "Stats Private",
+    statsShareDesc: "Whether other users can see your stats on the showcase.",
+    statsShareOnDone: "Your stats are now visible to others.",
+    statsShareOffDone: "Your stats are now hidden from others.",
 
     // cosmetics
     cosmeticSection: "Cosmetics",
@@ -315,6 +325,11 @@ export const identity: NamespaceDict = {
     resultTitle: "変換結果",
     aiPostSuccess: "ショーケースに投稿しました。",
     aiNeedConvert: "先に変換ボタンを押して結果を確認してから投稿してください。テキストを編集した場合は再変換が必要です。",
+    statsShareOn: "統計公開",
+    statsShareOff: "統計非公開",
+    statsShareDesc: "ショーケースで他のユーザーが自分の統計を見られるかどうか。",
+    statsShareOnDone: "他のユーザーがあなたの統計を見られるようになりました。",
+    statsShareOffDone: "他のユーザーには統計が非表示になりました。",
 
     // cosmetics
     cosmeticSection: "コスメティック",

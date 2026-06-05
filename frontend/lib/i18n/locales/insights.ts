@@ -51,7 +51,8 @@ export const insights: NamespaceDict = {
     topPercentile: "상위 {n}%",
     toNextGrade: "다음 등급 {grade}까지 {n}% 남음",
     maxGrade: "최고 등급 달성!",
-    statusSaveSuccess: "상태 메시지가 저장되었습니다."
+    statusSaveSuccess: "상태 메시지가 저장되었습니다.",
+    statsHidden: "이 사용자는 통계를 비공개로 설정했습니다."
   },
   en: {
     statsTitle: "Stats · Grade",
@@ -102,7 +103,8 @@ export const insights: NamespaceDict = {
     topPercentile: "Top {n}%",
     toNextGrade: "{n}% to next grade {grade}",
     maxGrade: "Max grade achieved!",
-    statusSaveSuccess: "Status message saved."
+    statusSaveSuccess: "Status message saved.",
+    statsHidden: "This user keeps their stats private."
   },
   ja: {
     statsTitle: "統計 · 等級",
@@ -153,6 +155,7 @@ export const insights: NamespaceDict = {
     topPercentile: "上位{n}%",
     toNextGrade: "次の等級{grade}まであと{n}%",
     maxGrade: "最高等級達成！",
-    statusSaveSuccess: "ステータスメッセージを保存しました。"
+    statusSaveSuccess: "ステータスメッセージを保存しました。",
+    statsHidden: "このユーザーは統計を非公開に設定しています。"
   }
 };

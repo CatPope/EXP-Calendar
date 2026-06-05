@@ -44,6 +44,7 @@ export interface User {
   defense_tickets: number;
   tendency?: Tendency | string;
   equipped_title: Title | null;
+  stats_public: boolean;
 }
 
 export interface Schedule {
@@ -134,6 +135,9 @@ export interface ShowcaseDetail {
   persona_llm_output: string;
   character_skin: string;
   grass: Record<string, number>;
+  // 통계 공개 여부 + 공개일 때만 채워지는 풀 StatsSummary.
+  stats_public: boolean;
+  summary?: StatsSummary;
 }
 
 export interface TitleCatalogEntry {

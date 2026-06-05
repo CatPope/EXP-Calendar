@@ -229,6 +229,12 @@ export const Api = {
       method: "PATCH",
       body: JSON.stringify({ cosmetic })
     }),
+  // 쇼케이스 통계 공유 토글. true → 다른 사용자가 내 통계를 볼 수 있음.
+  setStatsPublic: (publicVal: boolean) =>
+    apiFetch<User>("/api/me/stats-public", {
+      method: "PATCH",
+      body: JSON.stringify({ public: publicVal })
+    }),
   // [v1.4] 보유 방어권 1장 사용 → 장착/전시 칭호 페널티 복구.
   redeemDefenseTicket: () =>
     apiFetch<{ defense_tickets: number; cleared: boolean }>(
@@ -329,6 +335,9 @@ export const Api = {
     ),
   showcaseDetail: (user_id: string) =>
     apiFetch<ShowcaseDetail>(`/api/showcase/${user_id}`),
+  // 쇼케이스 통계 추이. 대상이 stats_public=false 면 403.
+  showcaseSeries: (user_id: string, period: "week" | "month" | "year") =>
+    apiFetch<SeriesPoint[]>(`/api/showcase/${user_id}/series?period=${period}`),
 
   // stats
   grass: (days = 365) =>
