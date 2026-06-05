@@ -36,6 +36,7 @@ type User struct {
 	PityCounter           int       `json:"pity_counter"`
 	DefenseTickets        int       `json:"defense_tickets"`
 	StatsPublic           bool      `json:"stats_public"`
+	PasswordHash          string    `json:"-"` // bcrypt 해시. 빈 문자열이면 비밀번호 미설정 (legacy).
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"-"`
 }

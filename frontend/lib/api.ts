@@ -176,10 +176,16 @@ export function humanizeError(e: unknown): string {
 
 export const Api = {
   // auth
-  devLogin: (email: string, display_name: string) =>
+  // password 는 사용자가 입력한 평문. 백엔드가 bcrypt 비교한다.
+  devLogin: (email: string, password: string) =>
     apiFetch<AuthResponse>("/api/auth/dev-login", {
       method: "POST",
-      body: JSON.stringify({ email, display_name })
+      body: JSON.stringify({ email, password })
+    }),
+  devSignup: (email: string, password: string, display_name: string) =>
+    apiFetch<AuthResponse>("/api/auth/dev-signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password, display_name })
     }),
   googleLogin: (id_token: string) =>
     apiFetch<AuthResponse>("/api/auth/google", {
