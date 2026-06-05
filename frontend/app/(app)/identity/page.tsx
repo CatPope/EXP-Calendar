@@ -277,7 +277,10 @@ export default function IdentityPage() {
                 </span>
               ) : null}
               {user?.equipped_title && (
-                <TitleBadge title={user.equipped_title} />
+                <TitleBadge
+                  title={user.equipped_title}
+                  modifier={user.equipped_title.negative_modifier}
+                />
               )}
             </div>
 
