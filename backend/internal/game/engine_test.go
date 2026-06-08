@@ -77,18 +77,67 @@ func TestApplyDailyCap(t *testing.T) {
 	}
 }
 
-func TestTitlesUnlockedBetween(t *testing.T) {
-	got := TitlesUnlockedBetween(2, 5)
-	want := []string{"첫걸음", "초보 모험가"}
-	if len(got) != len(want) {
-		t.Fatalf("len got=%v want=%v", got, want)
+func TestParseTitleConditionAndSatisfies(t *testing.T) {
+	cond, ok := ParseTitleCondition("STREAK:7")
+	if !ok || cond.Kind != "STREAK" || cond.Threshold != 7 {
+		t.Fatalf("parse STREAK:7 got %+v ok=%v", cond, ok)
 	}
-	for i := range got {
-		if got[i] != want[i] {
-			t.Errorf("idx %d got %s want %s", i, got[i], want[i])
+	if _, ok := ParseTitleCondition("garbage"); ok {
+		t.Errorf("garbage should not parse")
+	}
+	p := TitleProgress{CompleteCount: 1, Streak: 7, MorningCount: 10, HighCount: 20, OverdueCount: 5, LegendaryChars: 1}
+	for _, c := range []string{"COMPLETE_COUNT:1", "STREAK:7", "MORNING_COUNT:10", "HIGH_COUNT:20", "OVERDUE_COUNT:5", "LEGENDARY_CHAR:1"} {
+		cond, _ := ParseTitleCondition(c)
+		if !p.Satisfies(cond) {
+			t.Errorf("expected %s satisfied by %+v", c, p)
 		}
 	}
-	if len(TitlesUnlockedBetween(10, 10)) != 0 {
-		t.Errorf("no-op should return empty")
+	cond, _ = ParseTitleCondition("STREAK:30")
+	if (TitleProgress{Streak: 7}).Satisfies(cond) {
+		t.Errorf("streak 7 should not satisfy STREAK:30")
+	}
+}
+
+func TestQuestRewardPoints(t *testing.T) {
+	cases := map[string]int{"ADD_PLAN": 20, "COMPLETE_PLAN": 30, "VISIT_SHOWCASE": 15, "BOGUS": 0}
+	for q, want := range cases {
+		if got := QuestRewardPoints(q); got != want {
+			t.Errorf("QuestRewardPoints(%s)=%d want %d", q, got, want)
+		}
+	}
+	if QuestStreakMultiplier(7) != 2 || QuestStreakMultiplier(6) != 1 {
+		t.Errorf("streak multiplier wrong")
+	}
+}
+
+func TestRollRarity(t *testing.T) {
+	if RollRarity(0.0, false) != "LEGENDARY" {
+		t.Errorf("r=0 base want LEGENDARY")
+	}
+	if RollRarity(0.029, false) != "LEGENDARY" || RollRarity(0.031, false) != "EPIC" {
+		t.Errorf("base LEGENDARY boundary at 0.03")
+	}
+	if RollRarity(0.05, true) != "LEGENDARY" {
+		t.Errorf("pickup doubles LEGENDARY to 0.06")
+	}
+	if RollRarity(0.99, false) != "COMMON" {
+		t.Errorf("r=0.99 want COMMON")
+	}
+	if RarityRank("LEGENDARY") <= RarityRank("EPIC") || RarityRank("RARE") <= RarityRank("COMMON") {
+		t.Errorf("rarity rank order wrong")
+	}
+}
+
+func TestRatingGrade(t *testing.T) {
+	cases := []struct {
+		c, f int
+		want string
+	}{
+		{0, 0, "D"}, {1, 1, "C"}, {95, 5, "S"}, {85, 15, "A"}, {70, 30, "B"}, {49, 51, "D"},
+	}
+	for _, tc := range cases {
+		if got := RatingGrade(tc.c, tc.f); got != tc.want {
+			t.Errorf("RatingGrade(%d,%d)=%s want %s", tc.c, tc.f, got, tc.want)
+		}
 	}
 }

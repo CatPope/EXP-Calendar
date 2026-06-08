@@ -6,30 +6,36 @@ import Link from "next/link";
 import {
   Calendar as CalendarIcon,
   ShoppingBag,
-  Crown,
   Sparkles,
   Users,
   LogOut,
   Settings,
-  X
+  ListChecks,
+  Gift
 } from "lucide-react";
 import { Api, humanizeError } from "@/lib/api";
 import { clearTokens, getStoredAccessToken } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
 import { loadSettings } from "@/lib/settings";
+import { applyPalette, getStoredPalette } from "@/lib/palette";
+import { useT } from "@/lib/i18n";
 import HUD from "@/components/HUD";
+import ProfileRail from "@/components/ProfileRail";
 import SettingsModal from "@/components/SettingsModal";
 import Spinner from "@/components/common/Spinner";
 
 const NAV = [
-  { href: "/calendar", label: "Calendar", icon: CalendarIcon },
-  { href: "/shop", label: "Shop", icon: ShoppingBag },
-  { href: "/titles", label: "Titles", icon: Crown },
-  { href: "/persona", label: "Persona", icon: Sparkles },
-  { href: "/showcase", label: "Showcase", icon: Users }
+  { href: "/calendar", labelKey: "navCalendar", icon: CalendarIcon },
+  { href: "/quests", labelKey: "navQuests", icon: ListChecks },
+  { href: "/shop", labelKey: "navShop", icon: ShoppingBag },
+  { href: "/summon", labelKey: "navSummon", icon: Gift },
+  { href: "/identity", labelKey: "navIdentity", icon: Sparkles },
+  { href: "/showcase", labelKey: "navShowcase", icon: Users },
+  { href: "/settings", labelKey: "settings", icon: Settings }
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const setUser = useAppStore((s) => s.setUser);
@@ -37,7 +43,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pushToast = useAppStore((s) => s.pushToast);
   const setSettings = useAppStore((s) => s.setSettings);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-  const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
   const settingsOpen = useAppStore((s) => s.settingsOpen);
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
 
@@ -46,6 +51,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // 저장된 테마/폰트 설정을 마운트 시 적용.
   useEffect(() => {
     setSettings(loadSettings());
+    applyPalette(getStoredPalette());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,85 +91,73 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (booting || !user) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <Spinner size={20} label="세션 로드 중..." />
+        <Spinner size={20} label={t("core.sessionLoading")} />
       </main>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <HUD />
+    // 데모 app.jsx 그리드 셸: 1행 헤더(전체 폭) · 2행 [nav | main | rail]
+    <div className="h-screen grid grid-rows-[auto_1fr] grid-cols-[auto_1fr_auto] bg-base overflow-hidden">
+      {/* top: 헤더 (전체 폭, 설정 기어는 우측) */}
+      <div className="col-span-full row-start-1">
+        <HUD />
+      </div>
 
-      {/* dim overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-40"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden
-        />
-      )}
-
-      {/* sidebar drawer (YouTube-style: 햄버거로 토글) */}
-      <aside
-        className={`fixed top-0 left-0 z-50 h-full w-64 bg-surface border-r border-border flex flex-col transition-transform duration-200 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      {/* nav: 좌측 사이드바 — 열림 220px / 접힘·모바일 64px 아이콘 레일 */}
+      <nav
+        className={`row-start-2 col-start-1 bg-surface border-r border-border flex flex-col overflow-y-auto overflow-x-hidden transition-[width] duration-200 ${
+          sidebarOpen ? "w-16 lg:w-[220px]" : "w-16"
         }`}
       >
-        <div className="p-4 border-b border-border flex items-center justify-between">
-          <span className="font-bold text-accent">EXP Calendar</span>
-          <button
-            type="button"
-            aria-label="메뉴 닫기"
-            onClick={() => setSidebarOpen(false)}
-            className="text-text-2 hover:text-text-1"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <nav className="p-3 flex-1 space-y-1 overflow-y-auto">
-          {NAV.map(({ href, label, icon: Icon }) => {
+        <div className="flex-1 p-2 space-y-1">
+          {NAV.map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
                 key={href}
                 href={href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+                title={t(`core.${labelKey}`)}
+                className={`flex items-center gap-3 rounded-md py-2 text-sm border-l-2 transition-colors ${
+                  sidebarOpen ? "px-0 justify-center lg:px-3 lg:justify-start" : "px-0 justify-center"
+                } ${
                   active
-                    ? "bg-accent/20 text-accent border border-accent/40"
-                    : "text-text-2 hover:bg-surface-2 hover:text-text-1"
+                    ? "bg-accent/15 text-accent border-accent"
+                    : "text-text-2 hover:bg-surface-2 hover:text-text-1 border-transparent"
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                {label}
+                <Icon className="h-5 w-5 shrink-0" />
+                {sidebarOpen && (
+                  <span className="hidden lg:inline truncate">{t(`core.${labelKey}`)}</span>
+                )}
               </Link>
             );
           })}
-        </nav>
-        <div className="p-3 border-t border-border space-y-1">
-          <button
-            onClick={() => {
-              setSettingsOpen(true);
-              setSidebarOpen(false);
-            }}
-            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-surface-2 hover:text-text-1"
-          >
-            <Settings className="h-4 w-4" />
-            설정
-          </button>
+        </div>
+        {/* footer: 로그아웃 (설정 항목은 헤더 기어로 이동) */}
+        <div className="p-2 border-t border-border">
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-2 hover:bg-danger/10 hover:text-danger"
+            title={t("core.logout")}
+            className={`w-full flex items-center gap-3 rounded-md py-2 text-sm text-text-2 hover:bg-danger/10 hover:text-danger ${
+              sidebarOpen ? "px-0 justify-center lg:px-3 lg:justify-start" : "px-0 justify-center"
+            }`}
           >
-            <LogOut className="h-4 w-4" />
-            로그아웃
+            <LogOut className="h-5 w-5 shrink-0" />
+            {sidebarOpen && <span className="hidden lg:inline">{t("core.logout")}</span>}
           </button>
         </div>
-      </aside>
+      </nav>
 
-      <main className="flex-1 min-w-0 p-4 md:p-6 max-w-7xl mx-auto w-full">
-        {children}
+      {/* main: 중앙 본문 (독립 스크롤) */}
+      <main className="row-start-2 col-start-2 min-w-0 overflow-auto">
+        <div className="w-full max-w-5xl mx-auto p-4 md:p-6">{children}</div>
       </main>
+
+      {/* rail: 우측 프로필 (xl 이상, 독립 스크롤) */}
+      <aside className="row-start-2 col-start-3 hidden xl:block w-80 bg-surface border-l border-border overflow-auto p-4">
+        <ProfileRail />
+      </aside>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>

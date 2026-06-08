@@ -2,6 +2,7 @@
 
 import { Coins, ShoppingCart } from "lucide-react";
 import type { ShopItem } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   item: ShopItem;
@@ -9,10 +10,10 @@ interface Props {
   onPurchase: () => void;
 }
 
-const CATEGORY_LABEL: Record<string, string> = {
-  CUSTOMIZE: "커스터마이즈",
-  DEFENSE: "방어",
-  PERSONA: "페르소나"
+const CATEGORY_LABEL_KEY: Record<string, string> = {
+  CUSTOMIZE: "play.catCustomize",
+  DEFENSE: "play.catDefense",
+  PERSONA: "play.catPersona"
 };
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -22,16 +23,18 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 export default function ItemCard({ item, disabled, onPurchase }: Props) {
+  const t = useT();
+  const categoryLabelKey = CATEGORY_LABEL_KEY[item.category];
   return (
     <div className="card flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <span
           className={`text-xs px-2 py-0.5 rounded border ${CATEGORY_COLOR[item.category] || ""}`}
         >
-          {CATEGORY_LABEL[item.category] || item.category}
+          {categoryLabelKey ? t(categoryLabelKey) : item.category}
         </span>
         <span className="flex items-center gap-1 text-gold font-mono text-sm">
-          <Coins className="h-4 w-4" /> {item.price}P
+          <Coins className="h-4 w-4" /> {item.price}C
         </span>
       </div>
       <div className="font-semibold text-text-1">{item.name}</div>
@@ -43,7 +46,7 @@ export default function ItemCard({ item, disabled, onPurchase }: Props) {
         className="btn-primary flex items-center justify-center gap-1 disabled:opacity-50"
       >
         <ShoppingCart className="h-4 w-4" />
-        구매
+        {t("play.buy")}
       </button>
     </div>
   );

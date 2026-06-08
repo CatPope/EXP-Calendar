@@ -1,12 +1,16 @@
 "use client";
 
 import { useAppStore } from "@/lib/store";
-import { Coins, Menu, Zap } from "lucide-react";
+import { Coins, Menu, Zap, Settings } from "lucide-react";
 import TitleBadge from "./TitleBadge";
+import { useT } from "@/lib/i18n";
 
 export default function HUD() {
+  const t = useT();
   const user = useAppStore((s) => s.user);
+  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const setSidebarOpen = useAppStore((s) => s.setSidebarOpen);
+  const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
   if (!user) return null;
 
   const levelTotalExp = user.level * user.level * 100;
@@ -21,12 +25,12 @@ export default function HUD() {
   );
 
   return (
-    <header className="sticky top-0 z-30 bg-base/90 backdrop-blur border-b border-border">
-      <div className="mx-auto max-w-7xl px-4 py-2 flex flex-wrap items-center gap-4">
+    <header className="z-30 bg-surface/95 backdrop-blur border-b border-border">
+      <div className="w-full px-4 py-2 flex flex-wrap items-center gap-4">
         <button
           type="button"
-          aria-label="메뉴 열기"
-          onClick={() => setSidebarOpen(true)}
+          aria-label={t("common.openMenu")}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
           className="text-text-2 hover:text-text-1 transition-colors"
         >
           <Menu className="h-6 w-6" />
@@ -36,8 +40,15 @@ export default function HUD() {
             {user.level}
           </div>
           <div className="text-sm">
-            <div className="font-semibold text-text-1">{user.display_name}</div>
+            <div className="font-semibold text-text-1">
+              {user.persona_name || user.display_name}
+            </div>
             <div className="text-xs text-text-2">Lv. {user.level}</div>
+            {user.status_message && (
+              <div className="text-xs text-text-2 max-w-[140px] truncate opacity-70">
+                {user.status_message}
+              </div>
+            )}
           </div>
         </div>
 
@@ -58,10 +69,10 @@ export default function HUD() {
 
         <div className="text-sm">
           <div className="flex items-center gap-1 text-gold font-mono">
-            <Coins className="h-4 w-4" /> {user.current_points}P
+            <Coins className="h-4 w-4" /> {user.current_points}C
           </div>
           <div className="text-xs text-text-2">
-            오늘 {user.daily_points_earned}/{user.daily_points_cap} ({dailyPct}%)
+            {t("common.todayLabel")} {user.daily_points_earned}/{user.daily_points_cap} ({dailyPct}%)
           </div>
         </div>
 
@@ -71,6 +82,15 @@ export default function HUD() {
             modifier={user.equipped_title?.negative_modifier}
           />
         </div>
+
+        <button
+          type="button"
+          aria-label={t("core.settings")}
+          onClick={() => setSettingsOpen(true)}
+          className="ml-auto text-text-2 hover:text-text-1 transition-colors"
+        >
+          <Settings className="h-5 w-5" />
+        </button>
       </div>
     </header>
   );

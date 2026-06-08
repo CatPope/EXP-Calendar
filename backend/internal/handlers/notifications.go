@@ -10,11 +10,17 @@ import (
 )
 
 type NotificationsHandler struct {
-	Push *repo.PushRepo
+	Push        *repo.PushRepo
+	VapidPublic string
 }
 
-func NewNotificationsHandler(p *repo.PushRepo) *NotificationsHandler {
-	return &NotificationsHandler{Push: p}
+func NewNotificationsHandler(p *repo.PushRepo, vapidPublic string) *NotificationsHandler {
+	return &NotificationsHandler{Push: p, VapidPublic: vapidPublic}
+}
+
+// Vapid exposes the server's VAPID public key so the browser can subscribe.
+func (h *NotificationsHandler) Vapid(c *gin.Context) {
+	Respond(c, http.StatusOK, gin.H{"public_key": h.VapidPublic})
 }
 
 type subscribeReq struct {

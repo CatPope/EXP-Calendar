@@ -6,15 +6,17 @@ import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import type { Tendency } from "@/lib/types";
 import ErrorBanner from "@/components/ErrorBanner";
+import { useT } from "@/lib/i18n";
 
-const OPTIONS: { value: Tendency; label: string; desc: string }[] = [
-  { value: "EASY", label: "쉬움 (EASY)", desc: "1.2x 보상 — 부담 없이 시작합니다." },
-  { value: "NORMAL", label: "보통 (NORMAL)", desc: "1.0x 보상 — 균형 잡힌 진행." },
-  { value: "HARD", label: "어려움 (HARD)", desc: "0.8x 보상 — 도전자에게 추천." }
+const OPTIONS: { value: Tendency; labelKey: string; descKey: string }[] = [
+  { value: "EASY", labelKey: "common.tendencyEasy", descKey: "common.tendencyEasyDesc" },
+  { value: "NORMAL", labelKey: "common.tendencyNormal", descKey: "common.tendencyNormalDesc" },
+  { value: "HARD", labelKey: "common.tendencyHard", descKey: "common.tendencyHardDesc" }
 ];
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const t = useT();
   const setUser = useAppStore((s) => s.setUser);
   const [pick, setPick] = useState<Tendency>("NORMAL");
   const [err, setErr] = useState("");
@@ -37,8 +39,8 @@ export default function OnboardingPage() {
 
   return (
     <div className="max-w-lg mx-auto space-y-4">
-      <h1 className="text-xl font-bold">시작하기 전에...</h1>
-      <p className="text-text-2 text-sm">난이도 성향을 선택하세요. 언제든 변경할 수 있습니다.</p>
+      <h1 className="text-xl font-bold">{t("common.onboardingTitle")}</h1>
+      <p className="text-text-2 text-sm">{t("common.onboardingSubtitle")}</p>
 
       {err && <ErrorBanner message={err} onDismiss={() => setErr("")} />}
 
@@ -53,14 +55,14 @@ export default function OnboardingPage() {
                 : "border-border bg-surface-2 hover:bg-surface"
             }`}
           >
-            <div className="font-semibold">{o.label}</div>
-            <div className="text-xs text-text-2 mt-0.5">{o.desc}</div>
+            <div className="font-semibold">{t(o.labelKey)}</div>
+            <div className="text-xs text-text-2 mt-0.5">{t(o.descKey)}</div>
           </button>
         ))}
       </div>
 
       <button onClick={submit} disabled={busy} className="btn-primary w-full disabled:opacity-50">
-        {busy ? "저장 중..." : "시작하기"}
+        {busy ? t("common.saving") : t("common.getStarted")}
       </button>
     </div>
   );

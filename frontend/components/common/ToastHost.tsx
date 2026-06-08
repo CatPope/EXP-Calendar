@@ -5,6 +5,7 @@ import { useAppStore } from "@/lib/store";
 import { TOAST_DURATION_MS } from "@/lib/ui-constants";
 import RewardToast from "../RewardToast";
 import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 type ToastKind = "info" | "success" | "error";
 
@@ -16,9 +17,10 @@ interface ToastItemProps {
 }
 
 function ToastItem({ id, kind, message, onClose }: ToastItemProps) {
+  const t = useT();
   useEffect(() => {
-    const t = setTimeout(() => onClose(id), TOAST_DURATION_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => onClose(id), TOAST_DURATION_MS);
+    return () => clearTimeout(timer);
   }, [id, onClose]);
 
   const Icon = kind === "error" ? AlertCircle : kind === "success" ? CheckCircle2 : Info;
@@ -36,7 +38,7 @@ function ToastItem({ id, kind, message, onClose }: ToastItemProps) {
     >
       <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" />
       <div className="flex-1 text-text-1">{message}</div>
-      <button onClick={() => onClose(id)} aria-label="닫기" className="text-text-2 hover:text-text-1">
+      <button onClick={() => onClose(id)} aria-label={t("common.close")} className="text-text-2 hover:text-text-1">
         <X className="h-4 w-4" />
       </button>
     </div>

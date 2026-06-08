@@ -12,9 +12,29 @@ import (
 
 type StatsHandler struct {
 	Rewards *repo.RewardRepo
+	Stats   *repo.StatsRepo
 }
 
-func NewStatsHandler(r *repo.RewardRepo) *StatsHandler { return &StatsHandler{Rewards: r} }
+func NewStatsHandler(r *repo.RewardRepo, s *repo.StatsRepo) *StatsHandler {
+	return &StatsHandler{Rewards: r, Stats: s}
+}
+
+// Summary returns the caller's rating grade and streaks (FR-STAT-03/05).
+func (h *StatsHandler) Summary(c *gin.Context) {
+	uid, ok := middleware.GetUserID(c)
+	if !ok {
+		RespondErr(c, http.StatusUnauthorized, "UNAUTHORIZED", "missing user id")
+		return
+	}
+	ctx := c.Request.Context()
+	current, _ := h.Rewards.ConsecutiveCompletionDays(ctx, uid, kstToday(), 120)
+	summary, err := h.Stats.SummaryFull(ctx, uid, current)
+	if err != nil {
+		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+		return
+	}
+	Respond(c, http.StatusOK, summary)
+}
 
 func (h *StatsHandler) Grass(c *gin.Context) {
 	uid, ok := middleware.GetUserID(c)
@@ -48,20 +68,15 @@ func (h *StatsHandler) Series(c *gin.Context) {
 		return
 	}
 	period := c.DefaultQuery("period", "week")
-	var from, to time.Time
-	now := timeNow()
-	to = time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, time.UTC)
-	switch period {
-	case "week":
-		from = to.AddDate(0, 0, -7)
-	case "month":
-		from = to.AddDate(0, -1, 0)
-	case "year":
-		from = to.AddDate(-1, 0, 0)
-	default:
-		from = to.AddDate(0, 0, -7)
-	}
-	out, err := h.Rewards.SeriesByDay(c.Request.Context(), uid, from, to)
+	// Period semantics:
+	//   week : last 7 days       (daily buckets)
+	//   month: last 12 months    (monthly buckets)
+	//   year : last 10 years     (yearly buckets)
+	kstLoc := kstLocation()
+	nowKST := timeNow().In(kstLoc)
+	to := time.Date(nowKST.Year(), nowKST.Month(), nowKST.Day()+1, 0, 0, 0, 0, kstLoc)
+	from, granularity := periodWindow(period, to)
+	out, err := h.Rewards.SeriesAggregated(c.Request.Context(), uid, from, to, granularity)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return

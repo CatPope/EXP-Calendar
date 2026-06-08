@@ -8,6 +8,7 @@ import {
   REWARD_TOAST_VISIBLE_MS
 } from "@/lib/ui-constants";
 import TitleBadge from "./TitleBadge";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   reward: RewardResult | null;
@@ -15,16 +16,17 @@ interface Props {
 }
 
 export default function RewardToast({ reward, onClose }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (reward) {
       setOpen(true);
-      const t = setTimeout(() => {
+      const timer = setTimeout(() => {
         setOpen(false);
         setTimeout(onClose, REWARD_TOAST_HIDE_DELAY_MS);
       }, REWARD_TOAST_VISIBLE_MS);
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     }
   }, [reward, onClose]);
 
@@ -35,32 +37,32 @@ export default function RewardToast({ reward, onClose }: Props) {
       <div className="card border-accent/50 shadow-xl shadow-accent/20 min-w-[260px] space-y-2">
         <div className="flex items-center gap-2 text-success font-semibold">
           <Sparkles className="h-5 w-5" />
-          일정 완료!
+          {t("common.scheduleComplete")}
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-accent font-mono">+{reward.exp_gained} EXP</span>
-          <span className="text-gold font-mono">+{reward.points_gained} P</span>
+          <span className="text-gold font-mono">+{reward.points_gained} C</span>
         </div>
         {reward.level_up && (
           <div className="flex items-center gap-2 text-gold font-bold animate-level-up">
             <TrendingUp className="h-5 w-5" />
-            레벨 업! → Lv. {reward.new_level}
+            {t("common.levelUp", { level: reward.new_level ?? 0 })}
           </div>
         )}
         {reward.new_titles?.length > 0 && (
           <div className="space-y-1">
             <div className="text-xs text-text-2 flex items-center gap-1">
-              <Trophy className="h-3 w-3" /> 신규 칭호
+              <Trophy className="h-3 w-3" /> {t("common.newTitle")}
             </div>
             <div className="flex flex-wrap gap-1">
-              {reward.new_titles.map((t) => (
-                <TitleBadge key={t.id} title={t} />
+              {reward.new_titles.map((title) => (
+                <TitleBadge key={title.id} title={title} />
               ))}
             </div>
           </div>
         )}
         {reward.daily_cap_reached && (
-          <div className="text-xs text-danger">일일 포인트 한도에 도달했습니다.</div>
+          <div className="text-xs text-danger">{t("common.dailyCapReached")}</div>
         )}
       </div>
     </div>

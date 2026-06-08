@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ToastHost from "@/components/common/ToastHost";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
+import LocaleProvider from "@/components/common/LocaleProvider";
 
 export const metadata: Metadata = {
   title: "EXP Calendar",
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko" className="dark">
       <body className="bg-base text-text-1 antialiased min-h-screen">
+        <LocaleProvider />
         <ErrorBoundary>{children}</ErrorBoundary>
         <ToastHost />
       </body>

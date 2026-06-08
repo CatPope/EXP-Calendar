@@ -3,12 +3,38 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/expcalendar/backend/internal/llm"
 	"github.com/expcalendar/backend/internal/middleware"
+	"github.com/expcalendar/backend/internal/models"
 	"github.com/expcalendar/backend/internal/repo"
 	"github.com/gin-gonic/gin"
 )
+
+// buildPersonaDefinition composes a definition string from the structured
+// persona fields when available, falling back to the legacy persona_definition.
+// The composed form is: "{name}\n{tone}\n{history}\n{thoughts}" (parts omitted
+// when empty, joined with newlines, trimmed).
+func buildPersonaDefinition(u *models.User) string {
+	parts := []string{}
+	if u.PersonaName != "" {
+		parts = append(parts, u.PersonaName)
+	}
+	if u.PersonaTone != "" {
+		parts = append(parts, u.PersonaTone)
+	}
+	if u.PersonaHistory != "" {
+		parts = append(parts, u.PersonaHistory)
+	}
+	if u.PersonaThoughts != "" {
+		parts = append(parts, u.PersonaThoughts)
+	}
+	if len(parts) > 0 {
+		return strings.TrimSpace(strings.Join(parts, "\n"))
+	}
+	return u.PersonaDefinition
+}
 
 type PersonaHandler struct {
 	LLM    *llm.Client
@@ -53,14 +79,18 @@ func (h *PersonaHandler) Generate(c *gin.Context) {
 		return
 	}
 
-	// Priority: explicit preview definition → stored definition → legacy character_type.
+	// Priority: explicit preview definition → structured fields → legacy persona_definition.
 	def := req.Definition
 	if def == "" {
-		def = u.PersonaDefinition
+		def = buildPersonaDefinition(u)
 	}
+	// character_type: explicit hint → stored → persona_name (structured) → "default".
 	ct := req.CharacterType
 	if ct == "" {
 		ct = u.PersonaCharacterType
+	}
+	if ct == "" && u.PersonaName != "" {
+		ct = u.PersonaName
 	}
 	if ct == "" {
 		ct = "default"
@@ -86,7 +116,8 @@ func (h *PersonaHandler) Generate(c *gin.Context) {
 }
 
 type showcaseReq struct {
-	Text string `json:"text"`
+	Text      string `json:"text"`       // 원문 (변환 시 입력했던 텍스트)
+	LLMOutput string `json:"llm_output"` // 변환 결과 — 클라이언트가 /generate 로 미리 받은 값을 그대로 게시한다.
 }
 
 type showcaseResponse struct {
@@ -95,6 +126,10 @@ type showcaseResponse struct {
 	UsedDefinition bool   `json:"used_definition"`
 }
 
+// Showcase 는 변환을 새로 돌리지 않는다. 사용자가 미리 /api/persona/generate 로
+// 받은 결과(llm_output)를 그대로 저장한다. 이렇게 해야 "미리 보기"와 "실제
+// 게시 결과"가 동일해진다 (이전엔 게시 때 LLM 을 다시 돌려 미리 본 결과와
+// 다른 문장이 올라오는 문제가 있었다).
 func (h *PersonaHandler) Showcase(c *gin.Context) {
 	uid, ok := middleware.GetUserID(c)
 	if !ok {
@@ -102,8 +137,11 @@ func (h *PersonaHandler) Showcase(c *gin.Context) {
 		return
 	}
 	req, ok := BindAndValidate(c, func(r *showcaseReq) error {
-		if r.Text == "" {
+		if strings.TrimSpace(r.Text) == "" {
 			return errors.New("text required")
+		}
+		if strings.TrimSpace(r.LLMOutput) == "" {
+			return errors.New("llm_output required — call /api/persona/generate first")
 		}
 		return nil
 	})
@@ -116,34 +154,14 @@ func (h *PersonaHandler) Showcase(c *gin.Context) {
 		return
 	}
 
-	// Showcase ALWAYS uses the stored definition / character_type, ignoring any
-	// client-side hint. This is the monetization boundary: only paid setups
-	// produce public output.
-	def := u.PersonaDefinition
-	ct := u.PersonaCharacterType
-	if ct == "" {
-		ct = "default"
-	}
-
-	titles := []string{}
-	if userTitles, err := h.Titles.DisplayedTitlesForUser(c.Request.Context(), uid); err == nil {
-		for _, t := range userTitles {
-			titles = append(titles, t.Name)
-		}
-	}
-
-	out, err := h.LLM.Generate(c.Request.Context(), def, ct, titles, req.Text)
-	if err != nil {
-		RespondErr(c, http.StatusBadGateway, "LLM_ERROR", err.Error())
-		return
-	}
-	if err := h.Users.SetPersonaShowcase(c.Request.Context(), uid, req.Text, out); err != nil {
+	def := buildPersonaDefinition(u)
+	if err := h.Users.SetPersonaShowcase(c.Request.Context(), uid, req.Text, req.LLMOutput); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
 	Respond(c, http.StatusOK, showcaseResponse{
 		ShowcaseText:   req.Text,
-		LLMOutput:      out,
+		LLMOutput:      req.LLMOutput,
 		UsedDefinition: def != "",
 	})
 }

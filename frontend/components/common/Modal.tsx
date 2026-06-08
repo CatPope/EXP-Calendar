@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
@@ -20,6 +21,7 @@ export default function Modal({
   footer,
   maxWidth = "max-w-lg"
 }: Props) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -47,7 +49,7 @@ export default function Modal({
             <h2 className="text-base font-semibold">{title}</h2>
             <button
               type="button"
-              aria-label="닫기"
+              aria-label={t("common.close")}
               onClick={onClose}
               className="text-text-2 hover:text-text-1"
             >

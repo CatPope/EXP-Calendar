@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,11 +39,25 @@ func (r *RewardRepo) DeleteScheduleTx(ctx context.Context, tx pgx.Tx, userID, sc
 	return err
 }
 
-// GrassByDay returns dates within [from, to] mapped to schedule-completion counts.
+// GrassByDay returns dates within [from, to) mapped to activity counts.
+// Activity = schedule completions + quest claims (reward_log rows with source='QUEST').
+// Dates are bucketed by KST calendar day.
+// 일정은 "저장된 날짜(due_date)" 기준으로 집계한다 — 체크한 날짜가 아님.
 func (r *RewardRepo) GrassByDay(ctx context.Context, userID uuid.UUID, from, to time.Time) (map[string]int, error) {
 	rows, err := r.Pool.Query(ctx,
-		`SELECT completed_at::date AS d, COUNT(*) FROM schedules
-		 WHERE user_id=$1 AND status='COMPLETED' AND completed_at >= $2 AND completed_at < $3
+		`SELECT d, COUNT(*) FROM (
+		   -- schedule completions bucketed by KST due_date (저장된 날짜)
+		   SELECT (due_date AT TIME ZONE 'Asia/Seoul')::date AS d
+		   FROM schedules
+		   WHERE user_id=$1 AND status='COMPLETED'
+		     AND due_date >= $2 AND due_date < $3
+		   UNION ALL
+		   -- quest claims bucketed by KST date
+		   SELECT (occurred_at AT TIME ZONE 'Asia/Seoul')::date AS d
+		   FROM reward_log
+		   WHERE user_id=$1 AND source='QUEST'
+		     AND occurred_at >= $2 AND occurred_at < $3
+		 ) activity
 		 GROUP BY d ORDER BY d`,
 		userID, from, to)
 	if err != nil {
@@ -61,19 +76,94 @@ func (r *RewardRepo) GrassByDay(ctx context.Context, userID uuid.UUID, from, to 
 	return out, rows.Err()
 }
 
-// SeriesByDay returns rows {date, success, fail} where success=completed count, fail=overdue count.
+// SeriesByDay returns rows {date, success, fail} ordered ascending.
+// success = schedule completions + quest claims per KST day.
+// fail    = OVERDUE schedules per KST day (schedules only; quests have no fail state).
+// Dates are bucketed by KST calendar day; from/to are exclusive-upper-bound timestamps.
+// 일정은 "저장된 날짜(due_date)" 기준으로 집계한다 — 체크한 날짜가 아님.
 func (r *RewardRepo) SeriesByDay(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]map[string]any, error) {
 	rows, err := r.Pool.Query(ctx,
-		`SELECT d::date,
-		   SUM(CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END) AS success,
-		   SUM(CASE WHEN status='OVERDUE'   THEN 1 ELSE 0 END) AS fail
+		`SELECT d,
+		   SUM(success) AS success,
+		   SUM(fail)    AS fail
 		 FROM (
-		   SELECT GREATEST(due_date, completed_at) AS d, status
+		   -- schedule rows: completed => success bucket, overdue => fail bucket
+		   -- 둘 다 due_date(저장된 날짜) 기준으로 버킷팅.
+		   SELECT
+		     (due_date AT TIME ZONE 'Asia/Seoul')::date AS d,
+		     CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END AS success,
+		     CASE WHEN status='OVERDUE'   THEN 1 ELSE 0 END AS fail
 		   FROM schedules
 		   WHERE user_id=$1 AND due_date >= $2 AND due_date < $3
-		 ) s
-		 GROUP BY d::date ORDER BY d::date`,
+		   UNION ALL
+		   -- quest claims: each counts as 1 success, 0 fail
+		   SELECT
+		     (occurred_at AT TIME ZONE 'Asia/Seoul')::date AS d,
+		     1 AS success,
+		     0 AS fail
+		   FROM reward_log
+		   WHERE user_id=$1 AND source='QUEST'
+		     AND occurred_at >= $2 AND occurred_at < $3
+		 ) combined
+		 GROUP BY d ORDER BY d`,
 		userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]any
+	for rows.Next() {
+		var d time.Time
+		var s, f int
+		if err := rows.Scan(&d, &s, &f); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"date":    d.Format("2006-01-02"),
+			"success": s,
+			"fail":    f,
+		})
+	}
+	return out, rows.Err()
+}
+
+// SeriesAggregated 는 추이 차트용 데이터를 granularity 단위(day/month/year)로
+// 미리 집계해서 반환한다. 응답의 "date" 필드는 버킷 시작 날짜를 YYYY-MM-DD 로 직렬화:
+//   - day:   "YYYY-MM-DD"  (그 날)
+//   - month: "YYYY-MM-01"  (해당 월 1일)
+//   - year:  "YYYY-01-01"  (해당 연 1월 1일)
+// 일정은 due_date 기준, 퀘스트는 occurred_at 기준 (KST).
+func (r *RewardRepo) SeriesAggregated(ctx context.Context, userID uuid.UUID, from, to time.Time, granularity string) ([]map[string]any, error) {
+	var bucketExpr string
+	switch granularity {
+	case "month":
+		bucketExpr = "date_trunc('month', %s AT TIME ZONE 'Asia/Seoul')::date"
+	case "year":
+		bucketExpr = "date_trunc('year', %s AT TIME ZONE 'Asia/Seoul')::date"
+	default: // "day"
+		bucketExpr = "(%s AT TIME ZONE 'Asia/Seoul')::date"
+	}
+	sql := `SELECT d,
+		   SUM(success) AS success,
+		   SUM(fail)    AS fail
+		 FROM (
+		   SELECT
+		     ` + fmt.Sprintf(bucketExpr, "due_date") + ` AS d,
+		     CASE WHEN status='COMPLETED' THEN 1 ELSE 0 END AS success,
+		     CASE WHEN status='OVERDUE'   THEN 1 ELSE 0 END AS fail
+		   FROM schedules
+		   WHERE user_id=$1 AND due_date >= $2 AND due_date < $3
+		   UNION ALL
+		   SELECT
+		     ` + fmt.Sprintf(bucketExpr, "occurred_at") + ` AS d,
+		     1 AS success,
+		     0 AS fail
+		   FROM reward_log
+		   WHERE user_id=$1 AND source='QUEST'
+		     AND occurred_at >= $2 AND occurred_at < $3
+		 ) combined
+		 GROUP BY d ORDER BY d`
+	rows, err := r.Pool.Query(ctx, sql, userID, from, to)
 	if err != nil {
 		return nil, err
 	}

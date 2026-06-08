@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
+    "gen:characters": "node scripts/gen-characters.mjs",
     "test": "echo \"No frontend tests configured\""
   },
   "dependencies": {

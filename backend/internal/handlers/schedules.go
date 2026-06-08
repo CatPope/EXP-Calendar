@@ -23,17 +23,20 @@ type SchedulesHandler struct {
 	Titles    *repo.TitleRepo
 	Quests    *repo.QuestRepo
 	Rewards   *repo.RewardRepo
+	Stats     *repo.StatsRepo
 }
 
-func NewSchedulesHandler(pool *pgxpool.Pool, u *repo.UserRepo, s *repo.ScheduleRepo, t *repo.TitleRepo, q *repo.QuestRepo, r *repo.RewardRepo) *SchedulesHandler {
-	return &SchedulesHandler{Pool: pool, Users: u, Schedules: s, Titles: t, Quests: q, Rewards: r}
+func NewSchedulesHandler(pool *pgxpool.Pool, u *repo.UserRepo, s *repo.ScheduleRepo, t *repo.TitleRepo, q *repo.QuestRepo, r *repo.RewardRepo, st *repo.StatsRepo) *SchedulesHandler {
+	return &SchedulesHandler{Pool: pool, Users: u, Schedules: s, Titles: t, Quests: q, Rewards: r, Stats: st}
 }
 
 type createScheduleReq struct {
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Difficulty  string    `json:"difficulty"`
-	DueDate     time.Time `json:"due_date"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Difficulty  string     `json:"difficulty"`
+	DueDate     time.Time  `json:"due_date"`
+	StartTime   *time.Time `json:"start_time"`
+	EndTime     *time.Time `json:"end_time"`
 }
 
 func (h *SchedulesHandler) List(c *gin.Context) {
@@ -91,15 +94,15 @@ func (h *SchedulesHandler) Create(c *gin.Context) {
 	if !ok {
 		return
 	}
-	s, err := h.Schedules.Create(c.Request.Context(), uid, req.Title, req.Description, req.Difficulty, req.DueDate)
+	s, err := h.Schedules.Create(c.Request.Context(), uid, req.Title, req.Description, req.Difficulty, req.DueDate, req.StartTime, req.EndTime)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
-	// Auto-complete ADD_PLAN quest if user added >=2 plans today.
+	// Auto-complete + award ADD_PLAN quest if user added >=2 plans today.
 	today := kstToday()
 	if n, _ := h.Schedules.CountAddedOn(c.Request.Context(), uid, today); n >= 2 {
-		_, _, _ = h.Quests.MarkCompleted(c.Request.Context(), uid, today, "ADD_PLAN")
+		_, _, _, _ = AwardQuestAuto(c.Request.Context(), h.Quests, h.Users, uid, today, "ADD_PLAN")
 	}
 	Respond(c, http.StatusCreated, s)
 }
@@ -119,10 +122,12 @@ func (h *SchedulesHandler) Patch(c *gin.Context) {
 	if !ok {
 		return
 	}
-	// translate due_date string→time if needed
-	if v, ok := (*patch)["due_date"].(string); ok && v != "" {
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			(*patch)["due_date"] = t
+	// translate due_date/start_time/end_time string→time if needed
+	for _, key := range []string{"due_date", "start_time", "end_time"} {
+		if v, ok := (*patch)[key].(string); ok && v != "" {
+			if t, err := time.Parse(time.RFC3339, v); err == nil {
+				(*patch)[key] = t
+			}
 		}
 	}
 	s, err := h.Schedules.Update(c.Request.Context(), uid, id, *patch)
@@ -247,15 +252,9 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	// 6) level-up titles
-	newTitles, err := h.checkTitlesUnlocked(ctx, tx, uid, uCurrent.Level, newLevel)
-	if err != nil {
-		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
-		return
-	}
-
-	// 7) COMPLETE_PLAN quest auto-complete (any 1 completion today)
-	if err := h.checkQuestProgress(ctx, tx, uid, today); err != nil {
+	// 7) penalty recovery (FR-TITLE-04): a normal completion clears the penalty
+	//    modifier on the equipped title.
+	if _, err := h.Titles.ClearNegativeModifierTx(ctx, tx, uid); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
@@ -265,18 +264,13 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	// 8) 7-day streak check (outside tx; uses committed data)
-	if streak, err := h.Rewards.ConsecutiveCompletionDays(ctx, uid, today, 14); err == nil && streak >= 7 {
-		// grant "꾸준한 자"
-		tx2, err := h.Pool.Begin(ctx)
-		if err == nil {
-			t, granted, err := h.Titles.GrantTitleByName(ctx, tx2, uid, "꾸준한 자")
-			if err == nil && granted {
-				newTitles = append(newTitles, t)
-			}
-			_ = tx2.Commit(ctx)
-		}
-	}
+	// 8) COMPLETE_PLAN quest auto-complete + award (post-commit so it sees this
+	//    completion and the daily-cap state is consistent).
+	_, _, _, _ = AwardQuestAuto(ctx, h.Quests, h.Users, uid, today, "COMPLETE_PLAN")
+
+	// 9) stat-based title evaluation (SRS v1.3 Appendix C). Runs post-commit so the
+	//    aggregate queries see this completion. Grants any newly satisfied titles.
+	newTitles := h.evaluateTitles(ctx, uid, today)
 
 	// reload schedule for response
 	sched, _ = h.Schedules.GetByID(ctx, uid, id)
@@ -412,33 +406,38 @@ func (h *SchedulesHandler) applyReward(
 	return newLevel, ptsGranted, capReached, nil
 }
 
-// checkTitlesUnlocked grants every master title whose unlock condition lies in
-// the (oldLevel, newLevel] window. Returns the newly granted titles only.
-func (h *SchedulesHandler) checkTitlesUnlocked(
-	ctx context.Context, tx pgx.Tx,
-	uid uuid.UUID, oldLevel, newLevel int,
-) ([]*models.Title, error) {
+// evaluateTitles computes the user's stat progress and grants every master title
+// whose condition is now satisfied but not yet owned (SRS v1.3 Appendix C). It runs
+// post-commit (best-effort) and returns the newly granted titles for the response.
+func (h *SchedulesHandler) evaluateTitles(ctx context.Context, uid uuid.UUID, today time.Time) []*models.Title {
 	out := []*models.Title{}
-	for _, name := range game.TitlesUnlockedBetween(oldLevel, newLevel) {
-		t, granted, err := h.Titles.GrantTitleByName(ctx, tx, uid, name)
-		if err != nil {
-			return nil, err
+	streak, _ := h.Rewards.ConsecutiveCompletionDays(ctx, uid, today, 120)
+	prog, err := h.Stats.Progress(ctx, uid, streak)
+	if err != nil {
+		return out
+	}
+	conds, err := h.Titles.ListAllWithCondition(ctx)
+	if err != nil {
+		return out
+	}
+	for _, tc := range conds {
+		cond, ok := game.ParseTitleCondition(tc.Condition)
+		if !ok || !prog.Satisfies(cond) {
+			continue
 		}
-		if granted {
+		tx, err := h.Pool.Begin(ctx)
+		if err != nil {
+			continue
+		}
+		t, granted, err := h.Titles.GrantTitleByName(ctx, tx, uid, tc.Title.Name)
+		if err == nil && granted {
 			out = append(out, t)
+			_ = tx.Commit(ctx)
+		} else {
+			_ = tx.Rollback(ctx)
 		}
 	}
-	return out, nil
-}
-
-// checkQuestProgress auto-completes COMPLETE_PLAN for the day (single completion
-// is enough — see quest spec). Idempotent; safe to call multiple times.
-func (h *SchedulesHandler) checkQuestProgress(
-	ctx context.Context, tx pgx.Tx,
-	uid uuid.UUID, day time.Time,
-) error {
-	_, _, err := h.Quests.MarkCompletedTx(ctx, tx, uid, day, "COMPLETE_PLAN")
-	return err
+	return out
 }
 
 func levelOrNil(oldLvl, newLvl int) any {

@@ -19,9 +19,11 @@ import (
 	"syscall"
 	"time"
 
+	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/expcalendar/backend/internal/config"
 	"github.com/expcalendar/backend/internal/db"
 	"github.com/expcalendar/backend/internal/server"
+	"github.com/expcalendar/backend/internal/worker"
 )
 
 func main() {
@@ -42,7 +44,33 @@ func main() {
 	}
 	log.Printf("migrations applied from %s", cfg.MigrationsDir)
 
+	// VAPID keys for Web Push (FR-NOTI-01). Use env keys if provided; otherwise
+	// generate an ephemeral pair so push works out-of-the-box in dev (browsers
+	// re-subscribe on reload). Set VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY to persist.
+	if cfg.VAPIDPublic == "" || cfg.VAPIDPrivate == "" {
+		if priv, pub, gerr := webpush.GenerateVAPIDKeys(); gerr == nil {
+			cfg.VAPIDPrivate, cfg.VAPIDPublic = priv, pub
+			log.Printf("generated ephemeral VAPID keys (set VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY to persist)")
+		} else {
+			log.Printf("VAPID key generation failed (%v) — web push disabled", gerr)
+		}
+	}
+
 	router := server.NewRouter(cfg, pool)
+
+	// Background worker: schedule reminders (FR-NOTI-02) + OVERDUE sweep/penalty
+	// (FR-TITLE-03). Sends real Web Push when VAPID keys are available.
+	workerCtx, cancelWorker := context.WithCancel(context.Background())
+	defer cancelWorker()
+	var notifier worker.Notifier
+	if cfg.VAPIDPublic != "" && cfg.VAPIDPrivate != "" {
+		notifier = worker.NewWebPushNotifier(cfg.VAPIDPublic, cfg.VAPIDPrivate, cfg.VAPIDSubject, pool)
+		log.Printf("web push enabled (VAPID)")
+	} else {
+		notifier = worker.LogNotifier{Enabled: true}
+	}
+	worker.New(pool, notifier).Start(workerCtx)
+	log.Printf("background worker started (reminders + overdue sweep)")
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

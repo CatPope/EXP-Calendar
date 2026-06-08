@@ -28,10 +28,62 @@
   --text-2: 89 99 110;
 }
 
+/* 강조색 프리셋 (--accent 오버라이드) */
+:root[data-accent="cyan"] { --accent: 6 214 160; }
+:root[data-accent="gold"] { --accent: 255 215 0; }
+:root[data-accent="pink"] { --accent: 255 107 157; }
+:root[data-accent="blue"] { --accent: 59 130 246; }
+
 /* 폰트 크기 스케일 (rem 기반 tailwind 텍스트가 비례 확대) */
 :root[data-font="sm"] { font-size: 14px; }
 :root[data-font="md"] { font-size: 16px; }
 :root[data-font="lg"] { font-size: 18px; }
+
+/* ─── 컬러 테마 프리셋 (data-palette) — 전체 변수 오버라이드.
+   accent/theme 규칙보다 뒤에 선언되어 동일 특이도에서 우선 적용된다.
+   cosmic_purple(기본)은 :root 그대로 사용하므로 별도 규칙 없음. ─── */
+
+/* 게임보이 — 클래식 DMG 그린 모노크롬 */
+:root[data-palette="game_boy"] {
+  --bg-base: 15 56 15;
+  --bg-surface: 24 70 24;
+  --bg-surface-2: 38 92 38;
+  --border-default: 75 120 40;
+  --text-1: 155 188 15;
+  --text-2: 120 150 30;
+  --accent: 139 172 15;
+  --success: 155 188 15;
+  --gold: 224 216 99;
+  --danger: 198 92 60;
+}
+
+/* 신스웨이브 — 네온 퍼플/핫핑크/시안 on 딥 인디고 */
+:root[data-palette="synthwave"] {
+  --bg-base: 26 11 46;
+  --bg-surface: 38 18 64;
+  --bg-surface-2: 54 26 84;
+  --border-default: 96 52 138;
+  --text-1: 245 230 255;
+  --text-2: 184 150 214;
+  --accent: 255 46 151;
+  --success: 0 245 212;
+  --gold: 255 209 102;
+  --danger: 255 84 112;
+}
+
+/* 앰버 CRT — 호박색 단색 터미널 */
+:root[data-palette="amber_crt"] {
+  --bg-base: 20 13 0;
+  --bg-surface: 33 22 0;
+  --bg-surface-2: 48 33 5;
+  --border-default: 92 64 12;
+  --text-1: 255 176 0;
+  --text-2: 190 132 24;
+  --accent: 255 176 0;
+  --success: 140 220 90;
+  --gold: 255 215 0;
+  --danger: 255 100 60;
+}
 
 html,
 body {

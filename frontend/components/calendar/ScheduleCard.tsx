@@ -3,6 +3,7 @@
 import { Check, Pencil } from "lucide-react";
 import type { Schedule } from "@/lib/types";
 import DifficultyBadge from "@/components/DifficultyBadge";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   schedule: Schedule;
@@ -21,6 +22,7 @@ export default function ScheduleCard({
   draggable,
   onDragStart
 }: Props) {
+  const t = useT();
   const done = schedule.status === "COMPLETED";
   const overdue = schedule.status === "OVERDUE";
   return (
@@ -46,7 +48,7 @@ export default function ScheduleCard({
         {!done && onComplete && (
           <button
             type="button"
-            aria-label="완료"
+            aria-label={t("calendar.complete")}
             className="text-success hover:text-success/80"
             onClick={(e) => {
               e.stopPropagation();
@@ -59,7 +61,7 @@ export default function ScheduleCard({
         {!compact && onEdit && (
           <button
             type="button"
-            aria-label="수정"
+            aria-label={t("calendar.edit")}
             className="text-text-2 hover:text-text-1"
             onClick={(e) => {
               e.stopPropagation();

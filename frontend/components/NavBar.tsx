@@ -6,17 +6,19 @@ import { Calendar, ShoppingBag, Users, Sparkles, LogOut } from "lucide-react";
 import { Api } from "@/lib/api";
 import { clearTokens } from "@/lib/auth";
 import { useAppStore } from "@/lib/store";
+import { useT } from "@/lib/i18n";
 
 const ITEMS = [
-  { href: "/calendar", label: "캘린더", icon: Calendar },
-  { href: "/shop", label: "상점", icon: ShoppingBag },
-  { href: "/showcase", label: "쇼케이스", icon: Users },
-  { href: "/persona", label: "페르소나", icon: Sparkles }
+  { href: "/calendar", labelKey: "common.navCalendar", icon: Calendar },
+  { href: "/shop", labelKey: "common.navShop", icon: ShoppingBag },
+  { href: "/showcase", labelKey: "common.navShowcase", icon: Users },
+  { href: "/persona", labelKey: "common.navPersona", icon: Sparkles }
 ];
 
 export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useT();
   const setUser = useAppStore((s) => s.setUser);
 
   async function handleLogout() {
@@ -45,14 +47,14 @@ export default function NavBar() {
               }`}
             >
               <Icon className="h-4 w-4" />
-              {it.label}
+              {t(it.labelKey)}
             </Link>
           );
         })}
         <div className="ml-auto">
           <button onClick={handleLogout} className="btn-ghost flex items-center gap-1">
             <LogOut className="h-4 w-4" />
-            로그아웃
+            {t("common.logout")}
           </button>
         </div>
       </div>

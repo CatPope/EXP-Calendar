@@ -2,7 +2,7 @@
 
 import { Coins } from "lucide-react";
 import type { ShopItem } from "@/lib/types";
-import { CATEGORY_LABEL } from "@/lib/game";
+import { useT } from "@/lib/i18n";
 import Button from "@/components/common/Button";
 
 interface Props {
@@ -12,6 +12,12 @@ interface Props {
   onPurchase: (item: ShopItem) => void;
 }
 
+const CATEGORY_LABEL_KEY: Record<string, string> = {
+  CUSTOMIZE: "play.catCustomize",
+  DEFENSE: "play.catDefense",
+  PERSONA: "play.catPersona"
+};
+
 const CATEGORY_COLOR: Record<string, string> = {
   CUSTOMIZE: "text-success border-success/40 bg-success/10",
   DEFENSE: "text-accent border-accent/40 bg-accent/10",
@@ -19,8 +25,9 @@ const CATEGORY_COLOR: Record<string, string> = {
 };
 
 export default function ShopGrid({ items, currentPoints, busyId, onPurchase }: Props) {
+  const t = useT();
   if (items.length === 0) {
-    return <p className="text-text-2 text-sm">상점에 아이템이 없습니다.</p>;
+    return <p className="text-text-2 text-sm">{t("play.shopEmptyAlt")}</p>;
   }
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -35,12 +42,12 @@ export default function ShopGrid({ items, currentPoints, busyId, onPurchase }: P
                   CATEGORY_COLOR[it.category] || ""
                 }`}
               >
-                {CATEGORY_LABEL[it.category] || it.category}
+                {CATEGORY_LABEL_KEY[it.category] ? t(CATEGORY_LABEL_KEY[it.category]) : it.category}
               </span>
             </div>
             <p className="text-xs text-text-2 leading-relaxed">{it.description}</p>
             {it.effect && (
-              <p className="text-xs text-accent leading-relaxed">효과: {it.effect}</p>
+              <p className="text-xs text-accent leading-relaxed">{t("play.effectLabel", { effect: it.effect })}</p>
             )}
             <div className="flex items-center justify-between mt-auto pt-2 border-t border-border">
               <span className="inline-flex items-center gap-1 text-gold font-mono">
@@ -53,7 +60,7 @@ export default function ShopGrid({ items, currentPoints, busyId, onPurchase }: P
                 loading={busyId === it.id}
                 onClick={() => onPurchase(it)}
               >
-                {cantAfford ? "포인트 부족" : "구매"}
+                {cantAfford ? t("play.notEnoughPoints") : t("play.buy")}
               </Button>
             </div>
           </div>

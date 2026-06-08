@@ -18,9 +18,14 @@ type Config struct {
 	GoogleOAuthClientID  string
 	GeminiAPIKey         string
 	LLMModel             string
+	OllamaBaseURL        string
+	OllamaModel          string
 	DevMode              bool
 	AllowedOrigins       []string
 	MigrationsDir        string
+	VAPIDPublic          string
+	VAPIDPrivate         string
+	VAPIDSubject         string
 }
 
 func Load() *Config {
@@ -41,10 +46,15 @@ func Load() *Config {
 		JWTRefreshTTLDays:   atoi(getenv("JWT_REFRESH_TTL_DAYS", "14"), 14),
 		GoogleOAuthClientID: getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
 		GeminiAPIKey:        getenv("GEMINI_API_KEY", ""),
-		LLMModel:            getenv("LLM_MODEL", "gemini-2.0-flash"),
+		LLMModel:            getenv("LLM_MODEL", "gemini-3.5-flash"),
+		OllamaBaseURL:       getenv("OLLAMA_BASE_URL", ""),
+		OllamaModel:         getenv("OLLAMA_MODEL", "gemma2:9b"),
 		DevMode:             strings.EqualFold(getenv("DEV_MODE", "true"), "true"),
 		AllowedOrigins:      splitCsv(getenv("ALLOWED_ORIGINS", "http://localhost:3000")),
 		MigrationsDir:       getenv("MIGRATIONS_DIR", "migrations"),
+		VAPIDPublic:         getenv("VAPID_PUBLIC_KEY", ""),
+		VAPIDPrivate:        getenv("VAPID_PRIVATE_KEY", ""),
+		VAPIDSubject:        getenv("VAPID_SUBJECT", "mailto:admin@expcalendar.local"),
 	}
 }
 
