@@ -158,10 +158,16 @@ func (h *SummonHandler) Draw(c *gin.Context) {
 		}
 	}
 
-	// Roll rarities for the whole batch (pity-aware + 10-pull RARE+ guarantee).
-	rarities, endPity := rollBatch(req.Count, pity)
+	count := req.Count
+	if count < 1 || count > game.SummonMultiCount {
+		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "count out of allowed range")
+		return
+	}
 
-	draws := make([]models.SummonDraw, 0, req.Count)
+	// Roll rarities for the whole batch (pity-aware + 10-pull RARE+ guarantee).
+	rarities, endPity := rollBatch(count, pity)
+
+	draws := make([]models.SummonDraw, 0, count)
 	refundTotal := 0
 	for i, rar := range rarities {
 		ch, err := h.Characters.RandomByRarityTx(ctx, tx, rar)
