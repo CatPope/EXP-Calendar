@@ -1,5 +1,8 @@
+"use client";
+
 import type { Title } from "@/lib/types";
 import { Crown } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 const GRADE_BG: Record<string, string> = {
   COMMON: "bg-success/20 border-success/40",
@@ -9,8 +12,9 @@ const GRADE_BG: Record<string, string> = {
 };
 
 export default function TitleBadge({ title, modifier }: { title: Title | null; modifier?: string | null }) {
+  const t = useT();
   if (!title) {
-    return <span className="text-text-2 text-xs">칭호 없음</span>;
+    return <span className="text-text-2 text-xs">{t("play.noTitle")}</span>;
   }
   const cls = GRADE_BG[title.grade] || GRADE_BG.COMMON;
   return (

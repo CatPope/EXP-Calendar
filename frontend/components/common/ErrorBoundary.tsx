@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { translate, getStoredLocale } from "@/lib/i18n";
 
 interface State {
   err: Error | null;
@@ -22,16 +23,17 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
 
   render() {
     if (this.state.err) {
+      const locale = getStoredLocale();
       return (
         <main className="min-h-screen flex items-center justify-center p-4">
           <div className="card max-w-md text-center space-y-3">
-            <h1 className="text-xl font-bold text-danger">문제가 발생했습니다</h1>
+            <h1 className="text-xl font-bold text-danger">{translate(locale, "common.errorBoundaryTitle")}</h1>
             <p className="text-text-2 text-sm">
-              화면을 표시하는 중 오류가 발생했습니다. 다시 시도해 주세요.
+              {translate(locale, "common.errorBoundaryBody")}
             </p>
             <div className="text-xs text-text-2 break-all">{this.state.err.message}</div>
             <button onClick={this.reset} className="btn-primary">
-              다시 시도
+              {translate(locale, "common.retry")}
             </button>
           </div>
         </main>

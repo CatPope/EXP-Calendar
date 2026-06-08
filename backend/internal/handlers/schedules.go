@@ -31,10 +31,12 @@ func NewSchedulesHandler(pool *pgxpool.Pool, u *repo.UserRepo, s *repo.ScheduleR
 }
 
 type createScheduleReq struct {
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Difficulty  string    `json:"difficulty"`
-	DueDate     time.Time `json:"due_date"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Difficulty  string     `json:"difficulty"`
+	DueDate     time.Time  `json:"due_date"`
+	StartTime   *time.Time `json:"start_time"`
+	EndTime     *time.Time `json:"end_time"`
 }
 
 func (h *SchedulesHandler) List(c *gin.Context) {
@@ -92,7 +94,7 @@ func (h *SchedulesHandler) Create(c *gin.Context) {
 	if !ok {
 		return
 	}
-	s, err := h.Schedules.Create(c.Request.Context(), uid, req.Title, req.Description, req.Difficulty, req.DueDate)
+	s, err := h.Schedules.Create(c.Request.Context(), uid, req.Title, req.Description, req.Difficulty, req.DueDate, req.StartTime, req.EndTime)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
@@ -120,10 +122,12 @@ func (h *SchedulesHandler) Patch(c *gin.Context) {
 	if !ok {
 		return
 	}
-	// translate due_date string→time if needed
-	if v, ok := (*patch)["due_date"].(string); ok && v != "" {
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			(*patch)["due_date"] = t
+	// translate due_date/start_time/end_time string→time if needed
+	for _, key := range []string{"due_date", "start_time", "end_time"} {
+		if v, ok := (*patch)[key].(string); ok && v != "" {
+			if t, err := time.Parse(time.RFC3339, v); err == nil {
+				(*patch)[key] = t
+			}
 		}
 	}
 	s, err := h.Schedules.Update(c.Request.Context(), uid, id, *patch)

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Gift, Sparkles, Ticket, Star } from "lucide-react";
+import Link from "next/link";
+import { Gift, Sparkles, Ticket, Star, ChevronRight } from "lucide-react";
 import Spinner from "@/components/common/Spinner";
 import ErrorBanner from "@/components/ErrorBanner";
 import CharacterAvatar from "@/components/CharacterAvatar";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { useT } from "@/lib/i18n";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import type {
   GachaCharacter,
@@ -36,6 +38,7 @@ function pct(v: number): string {
 type CostType = "POINTS" | "TICKET";
 
 export default function SummonPage() {
+  const t = useT();
   const pushToast = useAppStore((s) => s.pushToast);
   const setUser = useAppStore((s) => s.setUser);
 
@@ -79,9 +82,9 @@ export default function SummonPage() {
       setResult(res);
       const legend = res.draws.filter((d) => d.character.rarity === "LEGENDARY");
       if (legend.length > 0) {
-        pushToast("success", `LEGENDARY ${legend.length}개 획득!`);
+        pushToast("success", t("character.legendGet", { n: legend.length }));
       } else {
-        pushToast("info", `${res.draws.length}회 소환 완료`);
+        pushToast("info", t("character.drawDone", { n: res.draws.length }));
       }
       reloadInfo();
       reloadCollection();
@@ -98,7 +101,7 @@ export default function SummonPage() {
     setBusy(true);
     try {
       const res = await Api.buyTickets(1);
-      pushToast("success", `소환권 구매 완료 (보유 ${res.tickets}장)`);
+      pushToast("success", t("character.buyTicketDone", { n: res.tickets }));
       reloadInfo();
       refreshUser();
     } catch (e) {
@@ -108,20 +111,7 @@ export default function SummonPage() {
     }
   }
 
-  async function equip(id: string) {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await Api.summonEquip(id);
-      pushToast("success", "캐릭터를 장착했습니다.");
-      reloadCollection();
-      refreshUser();
-    } catch (e) {
-      pushToast("error", humanizeError(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  // 장착(equip)은 /character 화면 전용. 뽑기 화면은 보유/미보유만 표시한다.
 
   const ownedById = new Map<string, OwnedCharacter>(
     (collection?.owned ?? []).map((o) => [o.id, o])
@@ -134,15 +124,15 @@ export default function SummonPage() {
 
   const spentLabel = result
     ? result.spent_tickets > 0
-      ? `${result.spent_tickets}티켓`
-      : `${result.spent_points}P`
+      ? t("character.spentTickets", { n: result.spent_tickets })
+      : t("character.spentPoints", { n: result.spent_points })
     : "";
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Gift className="h-5 w-5 text-accent" />
-        <h1 className="text-lg font-semibold">소환 · 도감</h1>
+        <h1 className="text-lg font-semibold">{t("character.summonTitle")}</h1>
       </div>
 
       {infoError && (
@@ -151,20 +141,34 @@ export default function SummonPage() {
 
       {/* BANNER / PITY */}
       {infoLoading ? (
-        <Spinner block label="소환 정보 불러오는 중..." />
+        <Spinner block label={t("character.loadingSummonInfo")} />
       ) : info ? (
-        <div className="card space-y-4">
-          <div className="flex items-center gap-2 text-gold">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-sm font-semibold">
-              픽업 배너 — LEGENDARY 확률 2배!
-            </span>
+        <div className="card space-y-4 p-0 overflow-hidden">
+          {/* 픽업 배너 이미지 — LEGENDARY 강조 비주얼 */}
+          <div className="relative w-full aspect-[16/9] bg-surface-2">
+            <img
+              src="/legendary-banner.png"
+              alt={t("character.pickupBanner")}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-surface/95 via-surface/40 to-transparent" />
+            <div className="absolute bottom-2 left-3 right-3 flex items-center gap-2 text-gold drop-shadow">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-semibold">
+                {t("character.pickupBanner")}
+              </span>
+            </div>
           </div>
+
+          <div className="px-4 pb-4 space-y-4">
 
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs text-text-2">
               <span>
-                천장 {info.pity_counter}/{info.pity_threshold}
+                {t("character.pity", {
+                  cur: info.pity_counter,
+                  max: info.pity_threshold,
+                })}
               </span>
             </div>
             <div className="h-2 w-full rounded-full bg-surface-2 overflow-hidden">
@@ -186,12 +190,13 @@ export default function SummonPage() {
 
           <div className="flex items-center gap-4 text-sm">
             <span className="text-gold font-semibold">
-              {info.points.toLocaleString()} P
+              {t("character.points", { n: info.points.toLocaleString() })}
             </span>
             <span className="inline-flex items-center gap-1 text-text-1">
               <Ticket className="h-4 w-4 text-accent" />
-              {info.tickets}장
+              {t("character.ticketsCount", { n: info.tickets })}
             </span>
+          </div>
           </div>
         </div>
       ) : null}
@@ -199,7 +204,7 @@ export default function SummonPage() {
       {/* RATE TABLE */}
       {info && (
         <div className="card space-y-2">
-          <h2 className="text-sm font-semibold text-text-1">픽업 확률</h2>
+          <h2 className="text-sm font-semibold text-text-1">{t("character.pickupRates")}</h2>
           <ul className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {RARITY_ORDER.map((r) => {
               const rate = info.pickup_rates?.[r];
@@ -230,7 +235,7 @@ export default function SummonPage() {
                   : "bg-surface-2 text-text-2 hover:bg-border"
               }`}
             >
-              포인트
+              {t("character.costPoints")}
             </button>
             <button
               onClick={() => setCostType("TICKET")}
@@ -240,7 +245,7 @@ export default function SummonPage() {
                   : "bg-surface-2 text-text-2 hover:bg-border"
               }`}
             >
-              소환권
+              {t("character.costTicket")}
             </button>
           </div>
 
@@ -250,14 +255,17 @@ export default function SummonPage() {
               onClick={() => doDraw(1)}
               className="rounded-md py-2 text-sm font-semibold bg-surface-2 text-text-1 hover:bg-border disabled:opacity-50"
             >
-              단차 소환 ({info.cost_single}P 또는 1티켓)
+              {t("character.drawSingle", { n: info.cost_single })}
             </button>
             <button
               disabled={busy}
               onClick={() => doDraw(10)}
               className="rounded-md py-2 text-sm font-semibold bg-accent text-white hover:opacity-90 disabled:opacity-50"
             >
-              10연차 소환 ({info.cost_multi}P 또는 {info.multi_count}티켓)
+              {t("character.drawMulti", {
+                p: info.cost_multi,
+                t: info.multi_count,
+              })}
             </button>
           </div>
 
@@ -266,8 +274,8 @@ export default function SummonPage() {
             onClick={buyTicket}
             className="text-xs rounded-md py-1.5 px-3 bg-surface-2 text-text-2 hover:bg-border inline-flex items-center gap-1 disabled:opacity-50"
           >
-            <Ticket className="h-3.5 w-3.5" /> 소환권 구매 ({info.ticket_price}
-            P/개)
+            <Ticket className="h-3.5 w-3.5" />{" "}
+            {t("character.buyTicket", { n: info.ticket_price })}
           </button>
         </div>
       )}
@@ -276,11 +284,11 @@ export default function SummonPage() {
       {result && (
         <div className="card space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-text-1">소환 결과</h2>
+            <h2 className="text-sm font-semibold text-text-1">{t("character.summonResult")}</h2>
             <span className="text-xs text-text-2">
-              {spentLabel} 소비 · {" "}
+              {t("character.spentRefund", { spent: spentLabel })}
               <span className="text-gold">
-                {result.refunded_points}P 환급
+                {t("character.refundedPoints", { n: result.refunded_points })}
               </span>
             </span>
           </div>
@@ -310,11 +318,11 @@ export default function SummonPage() {
                   </span>
                   {d.is_new ? (
                     <span className="text-[10px] font-bold text-accent">
-                      NEW
+                      {t("character.newBadge")}
                     </span>
                   ) : (
                     <span className="text-[10px] text-gold">
-                      +{d.refund_points}P 환급
+                      {t("character.refundEach", { n: d.refund_points })}
                     </span>
                   )}
                 </div>
@@ -324,11 +332,17 @@ export default function SummonPage() {
         </div>
       )}
 
-      {/* COLLECTION */}
+      {/* COLLECTION (보유/미보유 표시 전용. 장착은 /character 에서) */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Star className="h-4 w-4 text-gold" />
-          <h2 className="text-sm font-semibold text-text-1">도감</h2>
+          <h2 className="text-sm font-semibold text-text-1">{t("character.collection")}</h2>
+          <Link
+            href="/character"
+            className="ml-auto text-[10px] text-accent hover:underline inline-flex items-center gap-0.5"
+          >
+            {t("character.equipOnCustomizePage")} <ChevronRight className="h-3 w-3" />
+          </Link>
         </div>
 
         {colError && (
@@ -336,7 +350,7 @@ export default function SummonPage() {
         )}
 
         {colLoading ? (
-          <Spinner block label="도감 불러오는 중..." />
+          <Spinner block label={t("character.loadingCollection")} />
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {catalog.map((c) => {
@@ -374,20 +388,15 @@ export default function SummonPage() {
                     className="text-[10px] font-semibold"
                     style={{ color }}
                   >
-                    {c.rarity} x{owned.count}
+                    {t("character.rarityCount", {
+                      rarity: c.rarity,
+                      n: owned.count,
+                    })}
                   </span>
-                  {owned.equipped ? (
+                  {owned.equipped && (
                     <span className="text-[10px] text-accent inline-flex items-center gap-0.5">
-                      <Star className="h-3 w-3" /> 장착중
+                      <Star className="h-3 w-3" /> {t("character.equipped")}
                     </span>
-                  ) : (
-                    <button
-                      disabled={busy}
-                      onClick={() => equip(c.id)}
-                      className="text-[10px] rounded px-2 py-0.5 bg-accent text-white hover:opacity-90 disabled:opacity-50"
-                    >
-                      장착
-                    </button>
                   )}
                 </div>
               );

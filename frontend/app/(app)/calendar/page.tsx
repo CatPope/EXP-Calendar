@@ -12,6 +12,7 @@ import ErrorBanner from "@/components/ErrorBanner";
 import { Api, humanizeError } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
+import { useT } from "@/lib/i18n";
 import {
   addDays,
   addMonths,
@@ -19,14 +20,14 @@ import {
   fromYMD,
   startOfMonth,
   toYMD,
-  ymdToDueIso,
-  formatMonthHeader
+  ymdToDueIso
 } from "@/lib/date";
 import type { Schedule } from "@/lib/types";
 
 type View = "month" | "week" | "day";
 
 export default function CalendarPage() {
+  const t = useT();
   const [view, setView] = useState<View>("month");
   const [cursor, setCursor] = useState<Date>(new Date());
   // Local overlay for optimistic mutations on top of the fetched list.
@@ -34,6 +35,8 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [prefillYmd, setPrefillYmd] = useState<string | undefined>();
+  const [prefillStartHour, setPrefillStartHour] = useState<number | undefined>();
+  const [prefillEndHour, setPrefillEndHour] = useState<number | undefined>();
 
   const pushToast = useAppStore((s) => s.pushToast);
   const showReward = useAppStore((s) => s.showReward);
@@ -82,6 +85,8 @@ export default function CalendarPage() {
   const onSelectDate = (ymd: string) => {
     if (view === "month" || view === "week") {
       setPrefillYmd(ymd);
+      setPrefillStartHour(undefined);
+      setPrefillEndHour(undefined);
       setEditing(null);
       setModalOpen(true);
     } else {
@@ -89,9 +94,21 @@ export default function CalendarPage() {
     }
   };
 
+  // Called from WeekGrid when the user drags across hour cells in a single column.
+  // startHour is inclusive; endHour is exclusive (== last covered hour + 1).
+  const onSelectRange = (ymd: string, startHour: number, endHour: number) => {
+    setPrefillYmd(ymd);
+    setPrefillStartHour(startHour);
+    setPrefillEndHour(endHour);
+    setEditing(null);
+    setModalOpen(true);
+  };
+
   const onEditSchedule = (s: Schedule) => {
     setEditing(s);
     setPrefillYmd(undefined);
+    setPrefillStartHour(undefined);
+    setPrefillEndHour(undefined);
     setModalOpen(true);
   };
 
@@ -116,7 +133,7 @@ export default function CalendarPage() {
     try {
       const { schedule: updated } = await Api.uncompleteSchedule(s.id);
       patchLocal((arr) => arr.map((x) => (x.id === updated.id ? updated : x)));
-      pushToast("success", "완료를 취소하고 보상을 회수했습니다.");
+      pushToast("success", t("calendar.toastUncompleted"));
       try {
         const me = await Api.me();
         useAppStore.getState().setUser(me);
@@ -135,7 +152,7 @@ export default function CalendarPage() {
     try {
       const updated = await Api.patchSchedule(id, { due_date: ymdToDueIso(ymd) });
       patchLocal((arr) => arr.map((x) => (x.id === id ? updated : x)));
-      pushToast("success", "일정 날짜를 변경했습니다.");
+      pushToast("success", t("calendar.toastDateChanged"));
     } catch (e) {
       pushToast("error", humanizeError(e));
     }
@@ -143,11 +160,16 @@ export default function CalendarPage() {
 
   const header =
     view === "month"
-      ? formatMonthHeader(cursor)
+      ? t("calendar.monthHeader", {
+          year: cursor.getFullYear(),
+          month: cursor.getMonth() + 1
+        })
       : view === "week"
-      ? `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 — ${
-          Math.floor((cursor.getDate() - 1) / 7) + 1
-        }주차`
+      ? t("calendar.weekHeader", {
+          year: cursor.getFullYear(),
+          month: cursor.getMonth() + 1,
+          week: Math.floor((cursor.getDate() - 1) / 7) + 1
+        })
       : `${cursor.getFullYear()}.${String(cursor.getMonth() + 1).padStart(2, "0")}.${String(
           cursor.getDate()
         ).padStart(2, "0")}`;
@@ -159,7 +181,7 @@ export default function CalendarPage() {
           <button
             onClick={() => shift(-1)}
             className="btn-ghost"
-            aria-label="이전"
+            aria-label={t("calendar.prev")}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -167,12 +189,12 @@ export default function CalendarPage() {
             onClick={() => setCursor(new Date())}
             className="btn-ghost text-xs"
           >
-            오늘
+            {t("calendar.today")}
           </button>
           <button
             onClick={() => shift(1)}
             className="btn-ghost"
-            aria-label="다음"
+            aria-label={t("calendar.next")}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -190,7 +212,11 @@ export default function CalendarPage() {
                   : "text-text-2 hover:text-text-1"
               }`}
             >
-              {v === "month" ? "월" : v === "week" ? "주" : "일"}
+              {v === "month"
+                ? t("calendar.viewMonth")
+                : v === "week"
+                ? t("calendar.viewWeek")
+                : t("calendar.viewDay")}
             </button>
           ))}
         </div>
@@ -205,14 +231,14 @@ export default function CalendarPage() {
             setModalOpen(true);
           }}
         >
-          새 일정
+          {t("calendar.newSchedule")}
         </Button>
       </div>
 
       {err && <ErrorBanner message={err} onDismiss={dismissError} />}
 
       {loading ? (
-        <Spinner block label="일정 불러오는 중..." />
+        <Spinner block label={t("calendar.loadingSchedules")} />
       ) : view === "month" ? (
         <MonthGrid
           cursor={cursor}
@@ -227,6 +253,7 @@ export default function CalendarPage() {
           cursor={cursor}
           schedules={schedules}
           onSelectDate={onSelectDate}
+          onSelectRange={onSelectRange}
           onCompleteSchedule={onCompleteSchedule}
           onEditSchedule={onEditSchedule}
           onDropToDate={onDropToDate}
@@ -249,6 +276,8 @@ export default function CalendarPage() {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         dateYmd={prefillYmd}
+        prefillStartHour={prefillStartHour}
+        prefillEndHour={prefillEndHour}
         schedule={editing}
         onSaved={reload}
         onComplete={onCompleteSchedule}

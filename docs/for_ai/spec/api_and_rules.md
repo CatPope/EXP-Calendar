@@ -197,10 +197,24 @@ UserTitle:
 - res: `{ data: { llm_output: "string", character_type: "string", used_definition: bool } }`
 - `GEMINI_API_KEY` 없을 시 deterministic mock 사용
 
+### PATCH /api/me/stats-public
+- body: `{ "public": true | false }`
+- res: `{ data: User }` (전체 user 반환; `stats_public` 갱신됨)
+- 쇼케이스에서 본인 통계 노출 여부를 토글한다. 본인 페이지(`/identity`)는 토글과 무관하게 항상 본다.
+
 ### POST /api/persona/showcase
-- body: `{ "text": "string" }`  ← 사용자가 쇼케이스에 게시할 원문
+- body: `{ "text": "string", "llm_output": "string" }`
+  - `text` — 사용자가 입력한 원문
+  - `llm_output` — 클라이언트가 직전에 `/api/persona/generate` 로 받은 변환 결과 (필수)
 - res: `{ data: { showcase_text, llm_output, used_definition: bool } }`
-- **항상 저장된 `persona_definition` 사용** — 클라이언트의 character_type/definition hint 무시 (FR-SHOP-03 monetization 경계)
+- **LLM 을 재호출하지 않는다** — 받은 `llm_output` 을 그대로 저장. 사용자에게 보여준 "변환 결과(미리보기)" 와 "게시 결과"가 항상 동일하도록 보장.
+- 두 필드 중 하나라도 비어 있으면 400 → 클라이언트는 게시 전에 반드시 변환(`/generate`)을 거쳐야 한다.
+- 모네타이제이션 경계(FR-SHOP-03)는 `/generate` 가 (definition override 없이) 저장된 persona 로만 호출되도록 UI 가 보장한다.
+
+### GET /api/showcase/:user_id/series?period=week|month|year
+- 쇼케이스 통계 추이 데이터.
+- 대상이 `stats_public=false` 이고 viewer != target 이면 403 `STATS_PRIVATE`.
+- res: `{ data: SeriesPoint[] }` ( `/api/stats/series` 와 동일 형식 )
 
 ### GET /api/showcase/:user_id
 - res:
@@ -215,14 +229,19 @@ UserTitle:
     "displayed_titles": [Title, ...],
     "persona_showcase_text": "string",
     "persona_llm_output": "string",
-    "grass": { "YYYY-MM-DD": 2, ... }
+    "grass": { "YYYY-MM-DD": 2, ... },
+    "stats_public": true,
+    "summary": StatsSummary | null
   }
 }
 ```
-- 본인의 상세 일정/실패율은 노출하지 않음 (FR-SOC-03)
+- `stats_public=false` 이고 viewer != target 이면 `summary` 가 빠지고 `grass` 도 빈 객체로 반환된다.
+- 본인 페이지(viewer == target)는 토글과 무관하게 항상 풀 데이터를 본다.
+- 본인의 상세 일정/실패율은 노출하지 않음 (FR-SOC-03 — `summary` 안의 success_rate 는 공개 허용 시에만)
 
-### GET /api/showcase/recommendations
+### GET /api/showcase/recommendations?q=
 - res: `{ data: [{ user_id, display_name, level, equipped_title }] }`  ← 추천 목록 (다른 사용자 최대 20)
+- `q` 제공 시 `display_name` 부분 일치(대소문자 무시) 검색 결과를 반환한다 (FR-SOC-04). 미제공 시 레벨순 추천.
 
 ## 8. Stats
 
@@ -238,10 +257,13 @@ UserTitle:
 
 ## 9. Notifications
 
+### GET /api/notifications/vapid
+- res: `{ data: { public_key: "base64url" } }` ← 브라우저 PushManager 구독용 VAPID 공개키. 키 미설정 시 부팅마다 임시 키 생성.
+
 ### POST /api/notifications/subscribe
-- body: WebPushSubscription JSON `{ endpoint, keys: { p256dh, auth } }`
+- body: WebPushSubscription JSON `{ endpoint, keys: { p256dh, auth } }` (브라우저 `PushSubscription.toJSON()`)
 - res: `{ data: { ok: true } }`
-- 백그라운드 worker가 매분 일정 리마인더(사용자 `reminder_minutes` 전)와 OVERDUE 스윕(페널티 부착)을 수행한다. 실제 Web Push 발송은 VAPID 키 설정 시 활성(미설정 시 로그 no-op).
+- 백그라운드 worker가 매분 일정 리마인더(사용자 `reminder_minutes` 전)와 OVERDUE 스윕(페널티 부착)을 수행한다. **실제 Web Push 발송 구현됨**(VAPID-signed aes128gcm, `webpush-go`). 발송 실패 410/404 구독은 자동 삭제. `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` 미설정 시 부팅마다 임시 키 생성(프론트는 `/vapid`로 현재 키를 받아 구독).
 
 ## 10. Summon · Character Collection `[v1.3]` (FR-SUMMON-01~05)
 
@@ -403,6 +425,8 @@ Backend:
 - `ALLOWED_ORIGINS=http://localhost:3000`
 
 Frontend:
-- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080`
+- `NEXT_PUBLIC_APP_MODE=dev` — 값: `dev` | `prod`. 단일 플래그가 dev/prod 분기 + API base URL 파생을 모두 결정한다.
+  - `dev`: 브라우저가 `:3000` → `:8080` 백엔드 직접 호출 + dev-login 폼 노출
+  - `prod`: 같은 오리진 `/api` 로 호출 → nginx 가 backend 프록시 + dev-login 폼 숨김
+  - `frontend/lib/api.ts` 가 `APP_MODE` 로부터 `BASE_URL` 을 파생. 별도 `NEXT_PUBLIC_API_BASE_URL` 변수는 사용하지 않는다.
 - `NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` (선택)
-- `NEXT_PUBLIC_DEV_MODE=true`

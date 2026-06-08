@@ -38,7 +38,7 @@ func (r *QuestRepo) EnsureToday(ctx context.Context, userID uuid.UUID, today tim
 		}
 	}
 	rows, err := r.Pool.Query(ctx,
-		`SELECT quest_type, completed, reward_points FROM quest_log
+		`SELECT quest_type, completed, claimed, reward_points FROM quest_log
 		 WHERE user_id=$1 AND quest_date=$2 ORDER BY quest_type`,
 		userID, dateStr)
 	if err != nil {
@@ -48,7 +48,7 @@ func (r *QuestRepo) EnsureToday(ctx context.Context, userID uuid.UUID, today tim
 	var out []*models.Quest
 	for rows.Next() {
 		q := &models.Quest{}
-		if err := rows.Scan(&q.QuestType, &q.Completed, &q.RewardPoints); err != nil {
+		if err := rows.Scan(&q.QuestType, &q.Completed, &q.Claimed, &q.RewardPoints); err != nil {
 			return nil, err
 		}
 		out = append(out, q)
@@ -120,6 +120,50 @@ func (r *QuestRepo) AllQuestsStreak(ctx context.Context, userID uuid.UUID, today
 		}
 	}
 	return streak, nil
+}
+
+// ClaimTx atomically sets claimed=true on a quest row that is completed but not
+// yet claimed. Returns (completed, alreadyClaimed, err).
+//   - completed=false  → the quest isn't marked completed yet (cannot claim)
+//   - alreadyClaimed=true → quest was already claimed (idempotent, nothing granted)
+//   - completed=true, alreadyClaimed=false → claim applied successfully
+func (r *QuestRepo) ClaimTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID, day time.Time, questType string) (completed, alreadyClaimed bool, err error) {
+	dateStr := day.Format("2006-01-02")
+	var comp, claimedNow bool
+	scanErr := tx.QueryRow(ctx,
+		`SELECT completed, claimed FROM quest_log
+		 WHERE user_id=$1 AND quest_date=$2 AND quest_type=$3`,
+		userID, dateStr, questType).Scan(&comp, &claimedNow)
+	if scanErr == pgx.ErrNoRows {
+		return false, false, nil
+	}
+	if scanErr != nil {
+		return false, false, scanErr
+	}
+	if !comp {
+		return false, false, nil
+	}
+	if claimedNow {
+		return true, true, nil
+	}
+	_, err = tx.Exec(ctx,
+		`UPDATE quest_log SET claimed=true WHERE user_id=$1 AND quest_date=$2 AND quest_type=$3`,
+		userID, dateStr, questType)
+	if err != nil {
+		return false, false, err
+	}
+	return true, false, nil
+}
+
+// AllClaimedTx reports whether all three daily quests are both completed and
+// claimed for the day (used after a claim to check for the all-quests bonus).
+func (r *QuestRepo) AllClaimedTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID, day time.Time) (bool, error) {
+	var n int
+	err := tx.QueryRow(ctx,
+		`SELECT COUNT(*) FROM quest_log
+		 WHERE user_id=$1 AND quest_date=$2 AND completed=true AND claimed=true`,
+		userID, day.Format("2006-01-02")).Scan(&n)
+	return n >= len(DailyQuestTypes), err
 }
 
 // MarkCompleted is the non-tx wrapper.

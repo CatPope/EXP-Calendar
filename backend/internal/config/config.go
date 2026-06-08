@@ -18,6 +18,8 @@ type Config struct {
 	GoogleOAuthClientID  string
 	GeminiAPIKey         string
 	LLMModel             string
+	OllamaBaseURL        string
+	OllamaModel          string
 	DevMode              bool
 	AllowedOrigins       []string
 	MigrationsDir        string
@@ -45,6 +47,8 @@ func Load() *Config {
 		GoogleOAuthClientID: getenv("GOOGLE_OAUTH_CLIENT_ID", ""),
 		GeminiAPIKey:        getenv("GEMINI_API_KEY", ""),
 		LLMModel:            getenv("LLM_MODEL", "gemini-2.0-flash"),
+		OllamaBaseURL:       getenv("OLLAMA_BASE_URL", ""),
+		OllamaModel:         getenv("OLLAMA_MODEL", "gemma4:26b"),
 		DevMode:             strings.EqualFold(getenv("DEV_MODE", "true"), "true"),
 		AllowedOrigins:      splitCsv(getenv("ALLOWED_ORIGINS", "http://localhost:3000")),
 		MigrationsDir:       getenv("MIGRATIONS_DIR", "migrations"),

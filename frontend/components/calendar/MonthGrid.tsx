@@ -2,13 +2,8 @@
 
 import { useMemo } from "react";
 import type { Schedule } from "@/lib/types";
-import {
-  isSameDay,
-  isSameMonth,
-  monthGrid,
-  toYMD,
-  weekdayLabel
-} from "@/lib/date";
+import { isSameDay, isSameMonth, monthGrid, toYMD } from "@/lib/date";
+import { useT } from "@/lib/i18n";
 import ScheduleCard from "./ScheduleCard";
 
 interface Props {
@@ -28,6 +23,7 @@ export default function MonthGrid({
   onEditSchedule,
   onDropToDate
 }: Props) {
+  const t = useT();
   const cells = useMemo(() => monthGrid(cursor), [cursor]);
   const today = new Date();
 
@@ -68,7 +64,7 @@ export default function MonthGrid({
               i === 0 ? "text-danger" : i === 6 ? "text-accent" : "text-text-2"
             }`}
           >
-            {weekdayLabel(i)}
+            {t(`calendar.weekday${i}`)}
           </div>
         ))}
       </div>
@@ -97,7 +93,7 @@ export default function MonthGrid({
                 <span>{d.getDate()}</span>
                 {isToday && (
                   <span className="text-[9px] rounded bg-accent/20 px-1 text-accent">
-                    오늘
+                    {t("calendar.today")}
                   </span>
                 )}
               </div>
@@ -115,7 +111,7 @@ export default function MonthGrid({
                 ))}
                 {list.length > 3 && (
                   <div className="text-[10px] text-text-2">
-                    +{list.length - 3} 더보기
+                    {t("calendar.moreItems", { n: list.length - 3 })}
                   </div>
                 )}
               </div>

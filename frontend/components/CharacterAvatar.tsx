@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
 import {
   skinById,
   skinFromLevel,
@@ -33,6 +34,7 @@ export default function CharacterAvatar({
   skin,
   animated = true,
 }: Props) {
+  const t = useT();
   const def = skin ? skinById(skin) : skinFromLevel(level);
   const [step, setStep] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -73,7 +75,7 @@ export default function CharacterAvatar({
         imageRendering: "pixelated",
       }}
       role="img"
-      aria-label={`Lv.${level} ${def.label} 캐릭터`}
+      aria-label={t("character.avatarLabel", { level, label: def.label })}
       className="select-none"
       draggable={false}
     />

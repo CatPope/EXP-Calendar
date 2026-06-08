@@ -8,11 +8,14 @@ import { useAppStore } from "@/lib/store";
 import type { AuthResponse, User } from "@/lib/types";
 import ErrorBanner from "@/components/ErrorBanner";
 import Loading from "@/components/Loading";
+import { useT } from "@/lib/i18n";
 import { LogIn, Sparkles, UserPlus } from "lucide-react";
 
 type AuthMode = "login" | "signup";
 
-const DEV_MODE = process.env.NEXT_PUBLIC_DEV_MODE === "true";
+// 데모/쇼케이스 목적상 prod 모드에서도 dev-login 폼을 노출한다.
+// 실제 운영 배포 시에는 아래 가드를 복원하고 정식 OAuth/비밀번호 인증으로 교체할 것.
+// const DEV_MODE = process.env.NEXT_PUBLIC_APP_MODE !== "prod";
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
 
 declare global {
@@ -23,9 +26,11 @@ declare global {
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useT();
   const setUser = useAppStore((s) => s.setUser);
-  const [email, setEmail] = useState("dev@example.com");
-  const [displayName, setDisplayName] = useState("Dev User");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [mode, setMode] = useState<AuthMode>("login");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -88,10 +93,14 @@ export default function LoginPage() {
     setBusy(true);
     setErr("");
     const endpoint = mode === "signup" ? "/api/auth/dev-signup" : "/api/auth/dev-login";
+    const body =
+      mode === "signup"
+        ? { email, password, display_name: displayName }
+        : { email, password };
     try {
       const data = await apiFetch<AuthResponse>(endpoint, {
         method: "POST",
-        body: JSON.stringify({ email, display_name: displayName })
+        body: JSON.stringify(body)
       });
       setTokens(data.access_token, data.refresh_token);
       setUser(data.user);
@@ -101,10 +110,10 @@ export default function LoginPage() {
       // 없는 계정으로 로그인 시도 → 회원가입 모드로 안내.
       if (e instanceof ApiError && e.code === "NEED_SIGNUP") {
         setMode("signup");
-        setErr("등록되지 않은 계정입니다. 회원가입으로 전환했습니다.");
+        setErr(t("common.loginNeedSignup"));
       } else if (e instanceof ApiError && e.code === "ALREADY_EXISTS") {
         setMode("login");
-        setErr("이미 가입된 계정입니다. 로그인으로 전환했습니다.");
+        setErr(t("common.loginAlreadyExists"));
       } else {
         setErr(humanizeError(e));
       }
@@ -121,7 +130,7 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold">EXP Calendar</h1>
         </div>
         <p className="text-text-2 text-sm">
-          일정을 완료할 때마다 EXP와 포인트를 얻고, 칭호를 모아 보세요.
+          {t("common.loginTagline")}
         </p>
 
         {err && <ErrorBanner message={err} onDismiss={() => setErr("")} />}
@@ -129,40 +138,55 @@ export default function LoginPage() {
         {GOOGLE_CLIENT_ID ? (
           <div className="flex flex-col items-center gap-2">
             <div id="g-btn" />
-            {!googleReady && <Loading label="Google 로그인 준비 중..." />}
+            {!googleReady && <Loading label={t("common.loginGooglePreparing")} />}
           </div>
         ) : (
           <div className="text-xs text-text-2 text-center">
-            Google OAuth 미설정. DEV 로그인을 사용하세요.
+            {t("common.loginGoogleUnconfigured")}
           </div>
         )}
 
-        {DEV_MODE && (
-          <form onSubmit={handleDevAuth} className="space-y-2 border-t border-border pt-4">
+        {/* 가드 제거: prod 모드에도 노출 (데모용). 원복 시 {DEV_MODE && ( ... )} 로 감쌀 것. */}
+        <form onSubmit={handleDevAuth} className="space-y-2 border-t border-border pt-4">
             <div className="text-xs text-text-2">
-              {mode === "signup" ? "DEV 회원가입" : "DEV 로그인"}
+              {mode === "signup" ? t("common.devSignup") : t("common.devLogin")}
             </div>
             <input
+              type="email"
+              autoComplete="email"
               className="input w-full"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="email"
+              placeholder={t("common.emailPlaceholder")}
               required
             />
             <input
+              type="password"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               className="input w-full"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="표시 이름"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("common.passwordPlaceholder")}
               required
             />
+            {mode === "signup" && (
+              <input
+                type="text"
+                autoComplete="nickname"
+                className="input w-full"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={t("common.displayNamePlaceholder")}
+                required
+              />
+            )}
             <button type="submit" disabled={busy} className="btn-primary w-full flex items-center justify-center gap-2">
               {mode === "signup" ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
               {busy
-                ? "처리 중..."
+                ? t("common.processing")
                 : mode === "signup"
-                  ? "DEV 회원가입"
-                  : "DEV 로그인"}
+                  ? t("common.devSignup")
+                  : t("common.devLogin")}
             </button>
             <button
               type="button"
@@ -173,11 +197,10 @@ export default function LoginPage() {
               className="w-full text-xs text-text-2 hover:text-accent transition-colors pt-1"
             >
               {mode === "signup"
-                ? "이미 계정이 있나요? 로그인"
-                : "계정이 없나요? 회원가입"}
+                ? t("common.switchToLogin")
+                : t("common.switchToSignup")}
             </button>
           </form>
-        )}
       </div>
     </main>
   );

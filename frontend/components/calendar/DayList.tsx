@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { Schedule } from "@/lib/types";
 import { toYMD } from "@/lib/date";
+import { useT } from "@/lib/i18n";
 import ScheduleCard from "./ScheduleCard";
 
 interface Props {
@@ -20,6 +21,7 @@ export default function DayList({
   onEditSchedule,
   onAdd
 }: Props) {
+  const t = useT();
   const ymd = toYMD(cursor);
   const list = useMemo(() => {
     return schedules
@@ -31,14 +33,18 @@ export default function DayList({
     <div className="card space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">
-          {cursor.getFullYear()}년 {cursor.getMonth() + 1}월 {cursor.getDate()}일
+          {t("calendar.dayHeader", {
+            year: cursor.getFullYear(),
+            month: cursor.getMonth() + 1,
+            day: cursor.getDate()
+          })}
         </h3>
         <button className="btn-ghost text-xs" onClick={() => onAdd(ymd)}>
-          + 일정 추가
+          {t("calendar.addSchedule")}
         </button>
       </div>
       {list.length === 0 ? (
-        <p className="text-sm text-text-2">등록된 일정이 없습니다.</p>
+        <p className="text-sm text-text-2">{t("calendar.noSchedules")}</p>
       ) : (
         <ul className="space-y-2">
           {list.map((s) => (

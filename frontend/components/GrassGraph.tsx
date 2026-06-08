@@ -1,6 +1,7 @@
 "use client";
 
 import { addDays, toYMD } from "@/lib/date";
+import { useT } from "@/lib/i18n";
 
 interface Props {
   data: Record<string, number>;
@@ -30,6 +31,7 @@ function bucket(count: number): number {
 }
 
 export default function GrassGraph({ data, days = 365 }: Props) {
+  const t = useT();
   // align end of week to today; start = today - (days-1)
   const end = new Date();
   // We render 53 weeks * 7 days = 371 cells, starting at Sunday before (today - days)
@@ -58,7 +60,7 @@ export default function GrassGraph({ data, days = 365 }: Props) {
             {week.map((c) => (
               <div
                 key={c.ymd}
-                title={`${c.ymd}: ${c.count}건 완료`}
+                title={`${c.ymd}: ${t("insights.cellCompleted", { count: c.count })}`}
                 className={`w-3 h-3 rounded-sm ${LEVELS[bucket(c.count)]} ${
                   !c.inRange ? "opacity-30" : ""
                 }`}
@@ -68,11 +70,11 @@ export default function GrassGraph({ data, days = 365 }: Props) {
         ))}
       </div>
       <div className="flex items-center gap-2 text-xs text-text-2 mt-2">
-        <span>적음</span>
+        <span>{t("insights.legendLess")}</span>
         {LEVELS.map((c, i) => (
           <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />
         ))}
-        <span>많음</span>
+        <span>{t("insights.legendMore")}</span>
       </div>
     </div>
   );

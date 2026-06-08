@@ -65,13 +65,13 @@ docker compose up -d --build
 
 - 프론트엔드: <http://localhost:3000>
 - 백엔드 헬스체크: <http://localhost:8080/health>
-- (옵션) nginx 프록시: <http://localhost> — `docker compose --profile prod up -d --build`
+- (옵션) nginx 프록시: <http://localhost> — `.env`에서 `NEXT_PUBLIC_APP_MODE=prod`로 바꾼 뒤 `docker compose --profile prod up -d --build`
 
 ## 개발용 로그인 흐름
 
 ### Google OAuth 미설정 시 (기본)
 
-- `.env`에서 `DEV_MODE=true`, `NEXT_PUBLIC_DEV_MODE=true` 가 켜져 있는 상태이다.
+- `.env`에서 `DEV_MODE=true`(백엔드), `NEXT_PUBLIC_APP_MODE=dev`(프론트) 가 켜져 있는 상태이다.
 - 랜딩 페이지의 **"개발용 로그인"** 폼에 임의의 이메일과 표시 이름을 입력하면 즉시 가입/로그인되어 캘린더로 진입한다.
 - 내부적으로 `POST /api/auth/dev-login` 을 호출한다.
 
@@ -108,7 +108,9 @@ docker compose down -v
 # 코드 변경 후 재빌드
 docker compose up -d --build
 
-# 프로덕션 프로필 (nginx 포함)
+# 프로덕션 프로필 (nginx 포함 — 외부 호스트/터널 도메인 자동 대응)
+# .env 에서 NEXT_PUBLIC_APP_MODE=prod 로 바꾼 뒤 빌드한다.
+# 프론트 코드가 APP_MODE=prod 시 API base 를 빈 값으로 파생하여 같은 오리진 /api 경유로 호출한다.
 docker compose --profile prod up -d --build
 ```
 
@@ -161,7 +163,7 @@ docker compose exec db psql -U exp -d expcalendar -c "select count(*) from users
 | 빌드 실패 | `docker compose build --no-cache backend` (또는 `frontend`) 로 캐시 무시하고 재빌드. |
 | DB 마이그레이션이 안 보임 | `docker compose down -v && docker compose up -d --build` 로 볼륨까지 초기화. |
 | frontend 가 backend 를 못 찾음 (CORS) | 브라우저 콘솔의 CORS 에러 확인 → backend 의 `ALLOWED_ORIGINS` 가 `http://localhost:3000` 을 포함하는지 점검. |
-| `dev-login` 폼이 안 보임 | `.env` 의 `NEXT_PUBLIC_DEV_MODE=true` 확인 + frontend 재빌드 (`NEXT_PUBLIC_*` 는 빌드 시 주입됨). |
+| `dev-login` 폼이 안 보임 | `.env` 의 `NEXT_PUBLIC_APP_MODE=dev` 확인 + frontend 재빌드 (`NEXT_PUBLIC_*` 는 빌드 시 주입됨). |
 | Windows 에서 빌드가 매우 느림 | Docker Desktop 의 WSL2 백엔드 사용, 그리고 가능하면 프로젝트를 WSL 파일시스템(`\\wsl$\...`) 에 둔다. |
 
 ## 구현 범위 (MVP)

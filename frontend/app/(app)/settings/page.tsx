@@ -19,21 +19,24 @@ import { useAppStore } from "@/lib/store";
 import { clearTokens } from "@/lib/auth";
 import { useAsyncData } from "@/lib/hooks/useAsyncData";
 import { PALETTES, applyPalette, isPalette, type Palette as PaletteId } from "@/lib/palette";
+import { enablePush, type PushResult } from "@/lib/push";
+import { useT } from "@/lib/i18n";
+import { LOCALES, isLocale } from "@/lib/i18n/locale";
 import type { Settings } from "@/lib/types";
 
 const TIMEZONES = ["Asia/Seoul", "UTC", "America/New_York", "Asia/Tokyo"];
-const SCALE_OPTIONS: { value: number; label: string }[] = [
-  { value: 0.8, label: "작게" },
-  { value: 1.0, label: "기본" },
-  { value: 1.3, label: "크게" },
+const SCALE_OPTIONS: { value: number; labelKey: string }[] = [
+  { value: 0.8, labelKey: "scaleSmall" },
+  { value: 1.0, labelKey: "scaleDefault" },
+  { value: 1.3, labelKey: "scaleLarge" },
 ];
 const REMINDER_OPTIONS = [5, 10, 15, 30, 60];
-const NOTIFICATION_KEYS: { key: string; label: string }[] = [
-  { key: "push", label: "푸시 알림" },
-  { key: "schedule_reminder", label: "일정 리마인더" },
-  { key: "dormancy_warning", label: "휴면 경고" },
-  { key: "title_change", label: "칭호 획득/강등" },
-  { key: "daily_quest_reset", label: "일일 퀘스트 리셋" },
+const NOTIFICATION_KEYS: { key: string; labelKey: string }[] = [
+  { key: "push", labelKey: "notifPush" },
+  { key: "schedule_reminder", labelKey: "notifScheduleReminder" },
+  { key: "dormancy_warning", labelKey: "notifDormancy" },
+  { key: "title_change", labelKey: "notifTitleChange" },
+  { key: "daily_quest_reset", labelKey: "notifDailyReset" },
 ];
 
 function Toggle({
@@ -94,9 +97,11 @@ function SegButton({
 }
 
 export default function SettingsPage() {
+  const t = useT();
   const router = useRouter();
   const pushToast = useAppStore((s) => s.pushToast);
   const setUser = useAppStore((s) => s.setUser);
+  const setLocale = useAppStore((s) => s.setLocale);
 
   const { data, loading, error, dismissError } = useAsyncData<Settings>(
     () => Api.getSettings(),
@@ -110,7 +115,9 @@ export default function SettingsPage() {
     if (data) {
       setLocal(data);
       if (isPalette(data.theme)) applyPalette(data.theme);
+      if (isLocale(data.language)) setLocale(data.language); // 서버 언어 ↔ UI 동기화
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   function selectTheme(theme: PaletteId) {
@@ -128,11 +135,26 @@ export default function SettingsPage() {
   }
 
   function selectLanguage(lang: string) {
-    if (lang === "ko") {
-      update({ language: "ko" });
-    } else {
-      // en/ja는 V2 예정 — 서버 반영 없이 무시(언어는 ko 유지).
-      setLocal((cur) => (cur ? { ...cur, language: "ko" } : cur));
+    if (!isLocale(lang)) return;
+    setLocale(lang); // 즉시 화면 반영 + localStorage 캐시
+    update({ language: lang }); // 서버 영구화
+  }
+
+  const [pushBusy, setPushBusy] = useState(false);
+  async function doEnablePush() {
+    setPushBusy(true);
+    try {
+      const r: PushResult = await enablePush();
+      const msgKey: Record<PushResult, string> = {
+        granted: "core.pushGranted",
+        denied: "core.pushDenied",
+        unsupported: "core.pushUnsupported",
+        "no-sw": "core.pushNoSw",
+        error: "core.pushError"
+      };
+      pushToast(r === "granted" ? "success" : "error", t(msgKey[r]));
+    } finally {
+      setPushBusy(false);
     }
   }
 
@@ -150,7 +172,7 @@ export default function SettingsPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      pushToast("success", "내보내기 완료");
+      pushToast("success", t("core.exportDone"));
     } catch (e) {
       pushToast("error", humanizeError(e));
     }
@@ -175,7 +197,7 @@ export default function SettingsPage() {
       } catch {
         /* non-fatal */
       }
-      pushToast("success", "초기화되었습니다");
+      pushToast("success", t("core.resetDone"));
     } catch (e) {
       pushToast("error", humanizeError(e));
     } finally {
@@ -187,24 +209,24 @@ export default function SettingsPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <SettingsIcon className="h-5 w-5 text-accent" />
-        <h1 className="text-lg font-semibold">설정</h1>
+        <h1 className="text-lg font-semibold">{t("core.settings")}</h1>
       </div>
 
       {error && <ErrorBanner message={error} onDismiss={dismissError} />}
 
       {loading || !local ? (
-        <Spinner block label="설정 불러오는 중..." />
+        <Spinner block label={t("core.loadingSettings")} />
       ) : (
         <>
           {/* 1) 일반 */}
           <section className="card space-y-4">
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-accent" />
-              <h2 className="font-semibold">일반</h2>
+              <h2 className="font-semibold">{t("core.sectionGeneral")}</h2>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm text-text-1">시간대</label>
+              <label className="text-sm text-text-1">{t("core.timezone")}</label>
               <select
                 value={local.timezone}
                 onChange={(e) => update({ timezone: e.target.value })}
@@ -219,43 +241,43 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm text-text-1">주 시작 요일</label>
+              <label className="text-sm text-text-1">{t("core.weekStart")}</label>
               <div className="flex gap-1.5">
                 <SegButton
                   active={local.week_start === "SUN"}
                   onClick={() => update({ week_start: "SUN" })}
                 >
-                  일
+                  {t("core.weekStartSun")}
                 </SegButton>
                 <SegButton
                   active={local.week_start === "MON"}
                   onClick={() => update({ week_start: "MON" })}
                 >
-                  월
+                  {t("core.weekStartMon")}
                 </SegButton>
               </div>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm text-text-1">시간 표기</label>
+              <label className="text-sm text-text-1">{t("core.timeFormat")}</label>
               <div className="flex gap-1.5">
                 <SegButton
                   active={local.time_format === "H12"}
                   onClick={() => update({ time_format: "H12" })}
                 >
-                  12시간
+                  {t("core.h12")}
                 </SegButton>
                 <SegButton
                   active={local.time_format === "H24"}
                   onClick={() => update({ time_format: "H24" })}
                 >
-                  24시간
+                  {t("core.h24")}
                 </SegButton>
               </div>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm text-text-1">캐릭터 크기</label>
+              <label className="text-sm text-text-1">{t("core.characterScale")}</label>
               <div className="flex gap-1.5">
                 {SCALE_OPTIONS.map((opt) => (
                   <SegButton
@@ -263,27 +285,24 @@ export default function SettingsPage() {
                     active={local.character_scale === opt.value}
                     onClick={() => update({ character_scale: opt.value })}
                   >
-                    {opt.label}
+                    {t(`core.${opt.labelKey}`)}
                   </SegButton>
                 ))}
               </div>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <div className="flex flex-col">
-                <label className="text-sm text-text-1">언어</label>
-                {local.language !== "ko" && (
-                  <span className="text-[10px] text-gold">예정(V2)</span>
-                )}
-              </div>
+              <label className="text-sm text-text-1">{t("core.language")}</label>
               <select
                 value={local.language}
                 onChange={(e) => selectLanguage(e.target.value)}
                 className="text-xs rounded-md bg-surface-2 border border-border px-2 py-1.5 text-text-1"
               >
-                <option value="ko">한국어</option>
-                <option value="en">English</option>
-                <option value="ja">日本語</option>
+                {LOCALES.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
               </select>
             </div>
           </section>
@@ -292,14 +311,14 @@ export default function SettingsPage() {
           <section className="card space-y-4">
             <div className="flex items-center gap-2">
               <Link2 className="h-4 w-4 text-accent" />
-              <h2 className="font-semibold">연동 · 계정</h2>
+              <h2 className="font-semibold">{t("core.sectionAccount")}</h2>
             </div>
 
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-col">
-                <label className="text-sm text-text-1">Google Calendar 연동</label>
+                <label className="text-sm text-text-1">{t("core.gcalSync")}</label>
                 <span className="text-[10px] text-text-2">
-                  양방향 동기화는 예정(V2)
+                  {t("core.gcalSyncHint")}
                 </span>
               </div>
               <Toggle
@@ -311,24 +330,24 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-              <label className="text-sm text-text-1">데이터 내보내기 (JSON)</label>
+              <label className="text-sm text-text-1">{t("core.exportData")}</label>
               <button
                 type="button"
                 onClick={doExport}
                 className="text-xs rounded-md px-3 py-1.5 bg-surface-2 border border-border text-text-1 hover:bg-border inline-flex items-center gap-1.5"
               >
-                <Download className="h-3.5 w-3.5" /> 내보내기
+                <Download className="h-3.5 w-3.5" /> {t("core.exportBtn")}
               </button>
             </div>
 
             <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-              <label className="text-sm text-text-1">로그아웃</label>
+              <label className="text-sm text-text-1">{t("core.logout")}</label>
               <button
                 type="button"
                 onClick={doLogout}
                 className="text-xs rounded-md px-3 py-1.5 bg-surface-2 border border-border text-text-1 hover:bg-border inline-flex items-center gap-1.5"
               >
-                <LogOut className="h-3.5 w-3.5" /> 로그아웃
+                <LogOut className="h-3.5 w-3.5" /> {t("core.logout")}
               </button>
             </div>
 
@@ -336,9 +355,11 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex flex-col">
                   <label className="text-sm text-danger">
-                    계정/데이터 초기화
+                    {t("core.resetAccount")}
                   </label>
-                  <span className="text-[10px] text-text-2">복구 불가</span>
+                  <span className="text-[10px] text-text-2">
+                    {t("core.resetIrreversible")}
+                  </span>
                 </div>
                 {!confirmReset && (
                   <button
@@ -346,29 +367,27 @@ export default function SettingsPage() {
                     onClick={() => setConfirmReset(true)}
                     className="text-xs rounded-md px-3 py-1.5 bg-surface-2 border border-danger text-danger hover:bg-danger/10 inline-flex items-center gap-1.5"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> 초기화
+                    <Trash2 className="h-3.5 w-3.5" /> {t("core.resetBtn")}
                   </button>
                 )}
               </div>
               {confirmReset && (
                 <div className="flex flex-col gap-2 rounded-md border border-danger bg-danger/10 p-3">
-                  <p className="text-xs text-danger">
-                    정말 초기화하시겠습니까? 되돌릴 수 없습니다
-                  </p>
+                  <p className="text-xs text-danger">{t("core.resetConfirmQ")}</p>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={doReset}
                       className="text-xs rounded-md px-3 py-1.5 bg-danger text-white hover:opacity-90"
                     >
-                      확인
+                      {t("core.confirm")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmReset(false)}
                       className="text-xs rounded-md px-3 py-1.5 bg-surface-2 border border-border text-text-1 hover:bg-border"
                     >
-                      취소
+                      {t("core.cancel")}
                     </button>
                   </div>
                 </div>
@@ -380,11 +399,23 @@ export default function SettingsPage() {
           <section className="card space-y-4">
             <div className="flex items-center gap-2">
               <Bell className="h-4 w-4 text-accent" />
-              <h2 className="font-semibold">알림</h2>
+              <h2 className="font-semibold">{t("core.sectionNotif")}</h2>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+              <label className="text-sm text-text-1">{t("core.pushBrowser")}</label>
+              <button
+                type="button"
+                onClick={doEnablePush}
+                disabled={pushBusy}
+                className="text-xs rounded-md px-3 py-1.5 bg-accent text-white hover:bg-accent/80 disabled:opacity-50"
+              >
+                {t("core.pushEnable")}
+              </button>
             </div>
 
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm text-text-1">리마인더 시점</label>
+              <label className="text-sm text-text-1">{t("core.reminderTime")}</label>
               <select
                 value={local.reminder_minutes}
                 onChange={(e) =>
@@ -394,21 +425,23 @@ export default function SettingsPage() {
               >
                 {REMINDER_OPTIONS.map((n) => (
                   <option key={n} value={n}>
-                    {n}분 전
+                    {t("core.minBefore", { n })}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="flex flex-col gap-3 border-t border-border pt-3">
-              {NOTIFICATION_KEYS.map(({ key, label }) => {
+              {NOTIFICATION_KEYS.map(({ key, labelKey }) => {
                 const val = !!local.notification_prefs[key];
                 return (
                   <div
                     key={key}
                     className="flex items-center justify-between gap-3"
                   >
-                    <label className="text-sm text-text-1">{label}</label>
+                    <label className="text-sm text-text-1">
+                      {t(`core.${labelKey}`)}
+                    </label>
                     <Toggle
                       on={val}
                       onClick={() =>
@@ -430,7 +463,7 @@ export default function SettingsPage() {
           <section className="card space-y-4">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4 text-accent" />
-              <h2 className="font-semibold">테마</h2>
+              <h2 className="font-semibold">{t("core.sectionTheme")}</h2>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -449,16 +482,16 @@ export default function SettingsPage() {
                     }`}
                   >
                     <span className="text-xs font-medium text-text-1">
-                      {p.label}
+                      {t(`core.pal_${p.value}`)}
                     </span>
-                    <span className="text-[10px] text-text-2">{p.hint}</span>
+                    <span className="text-[10px] text-text-2">
+                      {t(`core.pal_${p.value}_hint`)}
+                    </span>
                   </button>
                 );
               })}
             </div>
-            <p className="text-[11px] text-text-2">
-              테마는 즉시 적용되며 기기에 저장됩니다.
-            </p>
+            <p className="text-[11px] text-text-2">{t("core.themeApplyNote")}</p>
           </section>
         </>
       )}

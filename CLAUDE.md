@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Source of Truth
 
-- **요구사항(권위 문서)**: [docs/for_ai/planning/requirements_ieee830_v1.4.md](docs/for_ai/planning/requirements_ieee830_v1.4.md) — SRS v1.4 (IEEE 830, 현재 작업 기준, UXUI v1.4 정합). 직전 버전 v1.3([`requirements_ieee830_v1.3.md`](docs/for_ai/planning/requirements_ieee830_v1.3.md))과 원본 v1.2([`Legacy/requirements_ieee830_v1.2.md`](docs/for_ai/planning/Legacy/requirements_ieee830_v1.2.md))는 동결 보존 — 참조용이며 직접 수정 금지. 와이어프레임은 [`UXUI_1.4.pdf`](docs/for_ai/planning/UXUI_1.4.pdf) (페이지 PNG: `docs/for_ai/planning/_uxui_pages_v1.4/`).
+- **요구사항(권위 문서)**: [docs/for_ai/planning/requirements_ieee830_v1.4.md](docs/for_ai/planning/requirements_ieee830_v1.4.md) — SRS v1.4 (IEEE 830, 현재 작업 기준, UXUI v1.4 정합). 직전 버전 v1.3([`Legacy/requirements_ieee830_v1.3.md`](docs/for_ai/planning/Legacy/requirements_ieee830_v1.3.md))과 원본 v1.2([`Legacy/requirements_ieee830_v1.2.md`](docs/for_ai/planning/Legacy/requirements_ieee830_v1.2.md))는 동결 보존 — 참조용이며 직접 수정 금지. 와이어프레임은 [`UXUI_v1.4.pdf`](docs/for_ai/planning/UXUI_v1.4.pdf) (페이지 PNG: `docs/for_ai/planning/_uxui_pages_v1.4/`).
 - **API 계약 & 게임 규칙(SSoT)**: [docs/for_ai/spec/api_and_rules.md](docs/for_ai/spec/api_and_rules.md) — 모든 엔드포인트 스키마, 응답 envelope `{data}`/`{error}`, EXP/Points 공식, 일일 한도, 칭호 부여 조건, LLM 프롬프트 템플릿. **backend/frontend 변경 시 이 문서와 코드를 동시 갱신**한다.
 
 ## 작업 진입 절차 (TODO 우선)
@@ -46,7 +46,7 @@ docker compose logs -f frontend
 docker compose down               # 데이터 유지
 docker compose down -v            # DB 볼륨 삭제
 
-# nginx 포함 프로필
+# nginx 포함 프로필 (.env 의 NEXT_PUBLIC_APP_MODE=prod 로 바꾼 뒤 빌드)
 docker compose --profile prod up -d --build
 
 # DB 접속
@@ -104,7 +104,7 @@ App Router 구조에서 **라우트 그룹 `(app)/`이 인증 경계**다. `(app
 
 ### Infra (루트)
 
-- `docker-compose.yml` — `DATABASE_URL`(컨테이너 내부 host=`db`)과 `NEXT_PUBLIC_API_BASE_URL`(브라우저 host=`localhost`)을 compose의 `environment:`에서 **명시적으로 덮어씀**. `.env`에 같은 키가 있어도 무시됨
+- `docker-compose.yml` — `DATABASE_URL`(컨테이너 내부 host=`db`)을 명시적으로 덮어씀. 프론트는 `NEXT_PUBLIC_APP_MODE`(`dev`|`prod`) 단일 플래그를 `.env`에서 받아 빌드 args/env로 전달하며, `frontend/lib/api.ts`가 모드로부터 `BASE_URL`을 파생한다 (dev → `http://localhost:8080`, prod → `""` 상대 경로). 별도 prod overlay 파일은 사용하지 않는다.
 - `nginx/nginx.conf` — `profile: prod`로만 기동. `:80`에서 `/api/`→backend, 나머지→frontend
 
 ## Design Decisions (변경 금지)
@@ -119,7 +119,7 @@ App Router 구조에서 **라우트 그룹 `(app)/`이 인증 경계**다. `(app
 
 ## 개발 규칙
 
-- **이전 버전 SRS(`Legacy/requirements_ieee830_v1.2.md`, `requirements_ieee830_v1.3.md`)는 절대 수정 금지**. 동결 보존된 직전 버전들로, 권위 비교용이다. **현재 권위 문서는 `requirements_ieee830_v1.4.md`이며 사용자 확인 없이 임의 갱신·정정·문구 다듬기 모두 금지**. 코드가 SRS와 어긋날 때는 코드를 고치고, SRS 변경이 필요해 보이면 사용자에게 먼저 확인.
+- **이전 버전 SRS(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.2.md`, `docs/for_ai/planning/Legacy/requirements_ieee830_v1.3.md`)는 절대 수정 금지**. 동결 보존된 직전 버전들로, 권위 비교용이다. **현재 권위 문서는 `docs/for_ai/planning/requirements_ieee830_v1.4.md`이며 사용자 확인 없이 임의 갱신·정정·문구 다듬기 모두 금지**. 코드가 SRS와 어긋날 때는 코드를 고치고, SRS 변경이 필요해 보이면 사용자에게 먼저 확인.
 - 기능 구현 시 **항상 subagent(Agent 도구)를 활용**하여 병렬로 작업한다. 독립적인 모듈(예: backend vs frontend)은 동시 spawn
 - 게임 규칙/공식 변경 시 `docs/for_ai/spec/api_and_rules.md`와 `backend/internal/game/engine.go`를 **함께** 갱신. 둘 중 하나만 바뀌면 SSoT가 깨진다
 - API 엔드포인트 추가/변경 시 → SSoT 문서 + `backend/internal/server/router.go` + `frontend/lib/api.ts`의 `Api.*` 3곳 동시 갱신

@@ -8,6 +8,7 @@ import {
   saveSettings,
   type Settings,
 } from "./settings";
+import { DEFAULT_LOCALE, applyLocale, type Locale } from "./i18n/locale";
 
 export type ToastKind = "info" | "success" | "error";
 
@@ -35,6 +36,10 @@ interface AppState {
   // user settings (theme + font size), localStorage-backed
   settings: Settings;
   setSettings: (patch: Partial<Settings>) => void;
+
+  // UI language (ko/en/ja), localStorage-backed + server-synced
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
 
   // UI chrome: sidebar drawer + settings modal
   sidebarOpen: boolean;
@@ -72,7 +77,13 @@ export const useAppStore = create<AppState>((set) => ({
       return { settings: next };
     }),
 
-  sidebarOpen: false,
+  locale: DEFAULT_LOCALE,
+  setLocale: (locale) => {
+    applyLocale(locale);
+    set({ locale });
+  },
+
+  sidebarOpen: true,
   setSidebarOpen: (v) => set({ sidebarOpen: v }),
   settingsOpen: false,
   setSettingsOpen: (v) => set({ settingsOpen: v })

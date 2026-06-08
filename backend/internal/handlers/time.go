@@ -33,3 +33,20 @@ func RangeKST(anchor time.Time) (time.Time, time.Time) {
 	from := time.Date(a.Year(), a.Month(), a.Day(), 0, 0, 0, 0, loc)
 	return from, from.AddDate(0, 0, 1)
 }
+
+// periodWindow returns (from, granularity) for the given trend-chart period.
+// to 는 호출자가 미리 계산한 exclusive upper bound (보통 KST 다음날 0시).
+//   - week  : 7일,   day 버킷
+//   - month : 12개월, month 버킷
+//   - year  : 10년,   year 버킷
+// 알 수 없는 값은 week 로 폴백.
+func periodWindow(period string, to time.Time) (time.Time, string) {
+	switch period {
+	case "month":
+		return to.AddDate(0, -12, 0), "month"
+	case "year":
+		return to.AddDate(-10, 0, 0), "year"
+	default:
+		return to.AddDate(0, 0, -7), "day"
+	}
+}

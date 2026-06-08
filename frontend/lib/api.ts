@@ -22,6 +22,8 @@ import type {
   CharacterType,
   Tendency,
   QuestCompleteResult,
+  QuestClaimResult,
+  TitleCatalogEntry,
   StatsSummary,
   SeriesPoint,
   SummonInfo,
@@ -31,8 +33,12 @@ import type {
   Settings
 } from "./types";
 
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+// API base URL 은 NEXT_PUBLIC_APP_MODE 로부터 파생한다.
+// - dev: 브라우저가 :3000(프론트) → :8080(백엔드) 직접 호출
+// - prod: 같은 오리진의 /api/... 로 호출 → nginx 가 backend 로 프록시
+//         외부 호스트(터널/내부 IP) 자동 대응을 위해 상대 경로 사용
+const APP_MODE = process.env.NEXT_PUBLIC_APP_MODE || "dev";
+export const BASE_URL = APP_MODE === "prod" ? "" : "http://localhost:8080";
 
 export class ApiError extends Error {
   code: string;
@@ -170,10 +176,16 @@ export function humanizeError(e: unknown): string {
 
 export const Api = {
   // auth
-  devLogin: (email: string, display_name: string) =>
+  // password 는 사용자가 입력한 평문. 백엔드가 bcrypt 비교한다.
+  devLogin: (email: string, password: string) =>
     apiFetch<AuthResponse>("/api/auth/dev-login", {
       method: "POST",
-      body: JSON.stringify({ email, display_name })
+      body: JSON.stringify({ email, password })
+    }),
+  devSignup: (email: string, password: string, display_name: string) =>
+    apiFetch<AuthResponse>("/api/auth/dev-signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password, display_name })
     }),
   googleLogin: (id_token: string) =>
     apiFetch<AuthResponse>("/api/auth/google", {
@@ -200,6 +212,41 @@ export const Api = {
       method: "PATCH",
       body: JSON.stringify({ display_name })
     }),
+  // [v1.4] 구조화 페르소나 자유 편집(무료). 부분 갱신 허용.
+  updatePersona: (fields: {
+    persona_name?: string;
+    persona_tone?: string;
+    persona_history?: string;
+    persona_thoughts?: string;
+  }) =>
+    apiFetch<User>("/api/me/persona", {
+      method: "PATCH",
+      body: JSON.stringify(fields)
+    }),
+  // [v1.4] 상태 메시지(대사) — 통계·등급 화면에서 편집, HUD/쇼케이스 노출.
+  setStatusMessage: (status_message: string) =>
+    apiFetch<User>("/api/me/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status_message })
+    }),
+  // 코스메틱 장착/해제 — 보유한 cosmetic effect 중 하나(또는 "")로 설정.
+  setCosmetic: (cosmetic: string) =>
+    apiFetch<User>("/api/me/cosmetic", {
+      method: "PATCH",
+      body: JSON.stringify({ cosmetic })
+    }),
+  // 쇼케이스 통계 공유 토글. true → 다른 사용자가 내 통계를 볼 수 있음.
+  setStatsPublic: (publicVal: boolean) =>
+    apiFetch<User>("/api/me/stats-public", {
+      method: "PATCH",
+      body: JSON.stringify({ public: publicVal })
+    }),
+  // [v1.4] 보유 방어권 1장 사용 → 장착/전시 칭호 페널티 복구.
+  redeemDefenseTicket: () =>
+    apiFetch<{ defense_tickets: number; cleared: boolean }>(
+      "/api/titles/use-defense",
+      { method: "POST" }
+    ),
 
   // schedules
   listSchedules: (from: string, to: string) =>
@@ -209,6 +256,8 @@ export const Api = {
     description?: string;
     difficulty: Difficulty;
     due_date: string;
+    start_time?: string | null;
+    end_time?: string | null;
   }) =>
     apiFetch<Schedule>("/api/schedules", {
       method: "POST",
@@ -237,6 +286,8 @@ export const Api = {
   todayQuests: () => apiFetch<Quest[]>("/api/quests/today"),
   completeQuest: (qt: QuestType) =>
     apiFetch<QuestCompleteResult>(`/api/quests/${qt}/complete`, { method: "POST" }),
+  claimQuest: (qt: QuestType) =>
+    apiFetch<QuestClaimResult>(`/api/quests/${qt}/claim`, { method: "POST" }),
 
   // shop
   listShop: () => apiFetch<ShopItem[]>("/api/shop/items"),
@@ -248,6 +299,7 @@ export const Api = {
 
   // titles
   myTitles: () => apiFetch<UserTitle[]>("/api/titles/me"),
+  allTitles: () => apiFetch<TitleCatalogEntry[]>("/api/titles/all"),
   patchTitle: (id: string, patch: { is_equipped?: boolean; is_displayed?: boolean }) =>
     apiFetch<UserTitle>(`/api/titles/${id}/equip`, {
       method: "PATCH",
@@ -270,19 +322,28 @@ export const Api = {
         })
       }
     ),
-  postShowcase: (text: string) =>
+  // 변환 결과(llm_output)는 미리 generatePersona 로 받은 값을 그대로 넘긴다.
+  // 서버는 LLM 을 다시 돌리지 않고 받은 결과를 그대로 게시한다 — 미리 보기와
+  // 게시 결과가 항상 일치하도록 보장.
+  postShowcase: (text: string, llm_output: string) =>
     apiFetch<{ showcase_text: string; llm_output: string; used_definition: boolean }>(
       "/api/persona/showcase",
-      { method: "POST", body: JSON.stringify({ text }) }
+      { method: "POST", body: JSON.stringify({ text, llm_output }) }
     ),
   definePersona: (definition: string) =>
     apiFetch<{ persona_definition: string; persona_tokens: number }>(
       "/api/persona/define",
       { method: "POST", body: JSON.stringify({ definition }) }
     ),
-  listShowcase: () => apiFetch<ShowcaseSummary[]>("/api/showcase/recommendations"),
+  listShowcase: (q?: string) =>
+    apiFetch<ShowcaseSummary[]>(
+      `/api/showcase/recommendations${q ? `?q=${encodeURIComponent(q)}` : ""}`
+    ),
   showcaseDetail: (user_id: string) =>
     apiFetch<ShowcaseDetail>(`/api/showcase/${user_id}`),
+  // 쇼케이스 통계 추이. 대상이 stats_public=false 면 403.
+  showcaseSeries: (user_id: string, period: "week" | "month" | "year") =>
+    apiFetch<SeriesPoint[]>(`/api/showcase/${user_id}/series?period=${period}`),
 
   // stats
   grass: (days = 365) =>
@@ -321,5 +382,13 @@ export const Api = {
       body: JSON.stringify(patch)
     }),
   exportData: () => apiFetch<Record<string, unknown>>("/api/me/export"),
-  resetAccount: () => apiFetch<{ ok: true }>("/api/me/reset", { method: "POST" })
+  resetAccount: () => apiFetch<{ ok: true }>("/api/me/reset", { method: "POST" }),
+
+  // web push
+  vapidPublicKey: () => apiFetch<{ public_key: string }>("/api/notifications/vapid"),
+  subscribePush: (sub: unknown) =>
+    apiFetch<{ ok: true }>("/api/notifications/subscribe", {
+      method: "POST",
+      body: JSON.stringify(sub)
+    })
 };

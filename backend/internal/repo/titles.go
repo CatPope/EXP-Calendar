@@ -106,6 +106,33 @@ func (r *TitleRepo) ClearNegativeModifierTx(ctx context.Context, tx pgx.Tx, user
 	return tag.RowsAffected() > 0, nil
 }
 
+// FindPenalizedTitleIDTx returns the user_titles.id of the best candidate to
+// recover with a defense ticket: prefers is_equipped, then is_displayed. If no
+// penalized row exists it returns (uuid.Nil, nil).
+func (r *TitleRepo) FindPenalizedTitleIDTx(ctx context.Context, tx pgx.Tx, userID uuid.UUID) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := tx.QueryRow(ctx,
+		`SELECT id FROM user_titles
+		 WHERE user_id=$1 AND negative_modifier IS NOT NULL
+		 ORDER BY is_equipped DESC, is_displayed DESC
+		 LIMIT 1`,
+		userID).Scan(&id)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return uuid.Nil, nil
+		}
+		return uuid.Nil, err
+	}
+	return id, nil
+}
+
+// ClearNegativeModifierByIDTx sets negative_modifier=NULL on a specific user_titles row.
+func (r *TitleRepo) ClearNegativeModifierByIDTx(ctx context.Context, tx pgx.Tx, userTitleID uuid.UUID) error {
+	_, err := tx.Exec(ctx,
+		`UPDATE user_titles SET negative_modifier=NULL WHERE id=$1`, userTitleID)
+	return err
+}
+
 // ClearNegativeModifier is a non-tx wrapper (used by shop defense purchase).
 func (r *TitleRepo) ClearNegativeModifier(ctx context.Context, userID uuid.UUID) (bool, error) {
 	tag, err := r.Pool.Exec(ctx,
@@ -187,9 +214,11 @@ func (r *TitleRepo) SetDisplayed(ctx context.Context, userID, userTitleID uuid.U
 }
 
 // DisplayedTitlesForUser returns titles flagged is_displayed for public showcase.
+// 페널티(`negative_modifier`)도 사용자 컨텍스트에서 함께 반환한다 — 쇼케이스에서
+// 칭호 옆에 [모디파이어] 마커가 보이도록 하기 위함.
 func (r *TitleRepo) DisplayedTitlesForUser(ctx context.Context, userID uuid.UUID) ([]*models.Title, error) {
 	rows, err := r.Pool.Query(ctx,
-		`SELECT t.id, t.name, t.grade, t.color_hex, t.icon_url
+		`SELECT t.id, t.name, t.grade, t.color_hex, t.icon_url, ut.negative_modifier
 		 FROM user_titles ut JOIN titles t ON t.id = ut.title_id
 		 WHERE ut.user_id=$1 AND ut.is_displayed=true
 		 ORDER BY ut.acquired_at DESC`, userID)
@@ -200,7 +229,7 @@ func (r *TitleRepo) DisplayedTitlesForUser(ctx context.Context, userID uuid.UUID
 	var out []*models.Title
 	for rows.Next() {
 		t := &models.Title{}
-		if err := rows.Scan(&t.ID, &t.Name, &t.Grade, &t.ColorHex, &t.IconURL); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.Grade, &t.ColorHex, &t.IconURL, &t.NegativeModifier); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

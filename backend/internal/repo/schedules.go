@@ -15,22 +15,22 @@ type ScheduleRepo struct{ Pool *pgxpool.Pool }
 func NewScheduleRepo(p *pgxpool.Pool) *ScheduleRepo { return &ScheduleRepo{Pool: p} }
 
 const scheduleSelect = `SELECT id, user_id, title, description, difficulty, status,
-	due_date, google_event_id, completed_at, created_at FROM schedules`
+	due_date, start_time, end_time, google_event_id, completed_at, created_at FROM schedules`
 
 func scanSchedule(row pgx.Row) (*models.Schedule, error) {
 	var s models.Schedule
 	if err := row.Scan(&s.ID, &s.UserID, &s.Title, &s.Description, &s.Difficulty, &s.Status,
-		&s.DueDate, &s.GoogleEventID, &s.CompletedAt, &s.CreatedAt); err != nil {
+		&s.DueDate, &s.StartTime, &s.EndTime, &s.GoogleEventID, &s.CompletedAt, &s.CreatedAt); err != nil {
 		return nil, err
 	}
 	return &s, nil
 }
 
-func (r *ScheduleRepo) Create(ctx context.Context, userID uuid.UUID, title, description, difficulty string, due time.Time) (*models.Schedule, error) {
+func (r *ScheduleRepo) Create(ctx context.Context, userID uuid.UUID, title, description, difficulty string, due time.Time, startTime, endTime *time.Time) (*models.Schedule, error) {
 	row := r.Pool.QueryRow(ctx,
-		`INSERT INTO schedules(user_id, title, description, difficulty, due_date)
-		 VALUES($1,$2,$3,$4,$5) RETURNING id`,
-		userID, title, description, difficulty, due)
+		`INSERT INTO schedules(user_id, title, description, difficulty, due_date, start_time, end_time)
+		 VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+		userID, title, description, difficulty, due, startTime, endTime)
 	var id uuid.UUID
 	if err := row.Scan(&id); err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (r *ScheduleRepo) Update(ctx context.Context, userID, id uuid.UUID, patch m
 	// Build dynamic UPDATE with whitelist.
 	cols := map[string]bool{
 		"title": true, "description": true, "difficulty": true,
-		"status": true, "due_date": true,
+		"status": true, "due_date": true, "start_time": true, "end_time": true,
 	}
 	setParts := ""
 	args := []any{}

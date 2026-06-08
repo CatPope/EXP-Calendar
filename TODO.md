@@ -2,7 +2,7 @@
 
 > 작업할 항목 목록. 세부 구현은 담당자가 직접 결정한다.
 > 항목을 진행할 때는 본 파일을 함께 갱신한다 — 진행 중 `[~]`, 완료 `[x]`, 막히면 `[!]` + 사유 한 줄.
-> 권위 문서는 `docs/for_ai/planning/requirements_ieee830_v1.4.md`, 와이어프레임은 `docs/for_ai/planning/UXUI_1.4.pdf` (페이지 PNG: `docs/for_ai/planning/_uxui_pages_v1.4/`). 직전 v1.3 SRS·와이어프레임은 동결 보존(`requirements_ieee830_v1.3.md`, `Legacy/UXUI_v1.3.pdf`).
+> 권위 문서는 `docs/for_ai/planning/requirements_ieee830_v1.4.md`, 와이어프레임은 `docs/for_ai/planning/UXUI_v1.4.pdf` (페이지 PNG: `docs/for_ai/planning/_uxui_pages_v1.4/`). 직전 v1.3 SRS·와이어프레임은 동결 보존(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.3.md`, `docs/for_ai/planning/Legacy/UXUI_v1.3.pdf`).
 
 ## A. UXUI 정합 — 프론트 전면 수정 (v1.4 기준)
 
@@ -37,7 +37,8 @@
 - [x] **통합 설정**(Part L): `user_settings` + GET/PATCH `/settings`, JSON 내보내기, 계정 초기화 (`settings.go`, 프론트 `settings/`)
 - [x] **통계·등급**(FR-STAT-03/05): `/stats/summary`(rating D~S·현재/최장 스트릭), 프론트 `stats/`
 - [x] **프론트 화면 4종**(UI-08/09/10/11): `quests`/`summon`/`stats`/`settings` + `api.ts`·`types.ts`·네비 갱신 (next build 통과)
-- [!] 후속: 실제 Web Push 발송(VAPID), GCal 양방향(V2), 다국어/다중테마(V2, UI만 노출)
+- [x] **실제 Web Push 발송**(FR-NOTI-01): `webpush-go` VAPID-signed 발송 + 키 자동생성 + `GET /api/notifications/vapid` + 프론트 구독(`lib/push.ts`)·서비스워커(`worker/index.js`)·설정 "알림 켜기" 버튼. 410/404 구독 자동정리 (2026-06-04)
+- [!] 후속: GCal 양방향(V2), 다국어/다중테마(V2, UI만 노출)
 
 ## E. v1.4 정합 — UXUI v1.4 반영 (2026-06-03)
 
@@ -51,10 +52,11 @@
 - [ ] **상점 시드 정합** (FR-SHOP-03, 와프 08): 픽셀 모자(120P) · 네온 오라(260P) · 배경:우주(400P) 시드 갱신 마이그레이션 (기존 시드는 보존)
 - [ ] **3.1.1절 와이어프레임 ↔ UI-ID ↔ FR-ID 매핑 표** 기준으로 인수 테스트 시나리오 보강
 - [ ] SSoT(`api_and_rules.md`) 용어 정합: `소환` 표기를 `스킨 뽑기`로 일괄 갱신 (API 경로 호환 정책 결정 후)
+- [x] **쇼케이스 사용자 검색** (FR-SOC-04, UI-16): `GET /api/showcase/recommendations?q=` 이름 부분일치(ILIKE) + 프론트 검색 UI(i18n ko/en/ja) — 빌드/e2e 검증 (2026-06-03 추가)
 
 ## 공통 규칙
 
 - 작업 시작 전 `CLAUDE.md` 정독.
-- SRS v1.2(`Legacy/requirements_ieee830_v1.2.md`)·v1.3(`requirements_ieee830_v1.3.md`)은 동결 보존, **절대 수정 금지**. 현재 권위 문서는 v1.4. 권위 변경 필요 시 사용자에게 먼저 확인.
+- SRS v1.2(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.2.md`)·v1.3(`docs/for_ai/planning/Legacy/requirements_ieee830_v1.3.md`)은 동결 보존, **절대 수정 금지**. 현재 권위 문서는 `docs/for_ai/planning/requirements_ieee830_v1.4.md`. 권위 변경 필요 시 사용자에게 먼저 확인.
 - 세부 결정은 담당자가 내리되, 본 TODO와 어긋나는 결정은 본 파일을 함께 수정해 기록한다.
 - PR 본문에 어떤 항목을 처리했는지 본 파일 체크박스 기준으로 보고한다.

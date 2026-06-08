@@ -42,7 +42,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 
 	// --- shared singletons ------------------------------------------------
 	jwtMgr := auth.NewJWTManager(cfg.JWTSecret, cfg.JWTAccessTTLMin, cfg.JWTRefreshTTLDays)
-	llmClient := llm.NewClient(cfg.GeminiAPIKey, cfg.LLMModel)
+	llmClient := llm.NewClient(cfg.GeminiAPIKey, cfg.LLMModel, cfg.OllamaBaseURL, cfg.OllamaModel)
 
 	// --- repos ------------------------------------------------------------
 	users := repo.NewUserRepo(pool)
@@ -61,13 +61,13 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 	authH := handlers.NewAuthHandler(cfg, jwtMgr, users, refresh, titles)
 	meH := handlers.NewMeHandler(users, titles)
 	schedH := handlers.NewSchedulesHandler(pool, users, schedules, titles, quests, rewards, stats)
-	questsH := handlers.NewQuestsHandler(pool, quests, users, schedules)
+	questsH := handlers.NewQuestsHandler(pool, quests, users, schedules, rewards)
 	shopH := handlers.NewShopHandler(pool, shop, users, titles)
-	titlesH := handlers.NewTitlesHandler(titles)
+	titlesH := handlers.NewTitlesHandler(pool, titles, stats, rewards)
 	personaH := handlers.NewPersonaHandler(llmClient, users, titles)
-	showcaseH := handlers.NewShowcaseHandler(users, titles, rewards, quests)
+	showcaseH := handlers.NewShowcaseHandler(users, titles, rewards, quests, stats)
 	statsH := handlers.NewStatsHandler(rewards, stats)
-	notifH := handlers.NewNotificationsHandler(push)
+	notifH := handlers.NewNotificationsHandler(push, cfg.VAPIDPublic)
 	summonH := handlers.NewSummonHandler(pool, users, characters)
 	settingsH := handlers.NewSettingsHandler(pool, settings, users)
 
@@ -97,6 +97,10 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.POST("/me/onboarding", meH.Onboarding)
 		authed.PATCH("/me/character", meH.SetCharacter)
 		authed.PATCH("/me/profile", meH.SetProfile)
+		authed.PATCH("/me/persona", meH.SetPersona)       // [v1.4] 구조화 페르소나 무료 편집
+		authed.PATCH("/me/status", meH.SetStatusMessage)  // [v1.4] 상태 메시지(대사) 편집
+		authed.PATCH("/me/stats-public", meH.SetStatsPublic) // 쇼케이스 통계 공유 토글
+		authed.PATCH("/me/cosmetic", meH.SetCosmetic)     // 코스메틱 장착(보유분 중 선택/해제)
 		authed.GET("/me/export", settingsH.Export)
 		authed.POST("/me/reset", settingsH.Reset)
 
@@ -122,6 +126,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		// quests
 		authed.GET("/quests/today", questsH.Today)
 		authed.POST("/quests/:quest_type/complete", questsH.Complete)
+		authed.POST("/quests/:quest_type/claim", questsH.Claim)
 
 		// shop
 		authed.GET("/shop/items", shopH.List)
@@ -129,7 +134,9 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 
 		// titles
 		authed.GET("/titles/me", titlesH.ListMine)
+		authed.GET("/titles/all", titlesH.ListAll) // [v1.4] 전체 칭호(보유+잠금) + 진행도
 		authed.PATCH("/titles/:id/equip", titlesH.Equip)
+		authed.POST("/titles/use-defense", titlesH.UseDefense) // [v1.4] 방어권으로 페널티 복구
 
 		// persona
 		authed.POST("/persona/generate", personaH.Generate)
@@ -139,6 +146,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		// showcase (social)
 		authed.GET("/showcase/recommendations", showcaseH.Recommendations)
 		authed.GET("/showcase/:user_id", showcaseH.Get)
+		authed.GET("/showcase/:user_id/series", showcaseH.Series)
 
 		// stats
 		authed.GET("/stats/grass", statsH.Grass)
@@ -146,6 +154,7 @@ func NewRouter(cfg *config.Config, pool *pgxpool.Pool) *gin.Engine {
 		authed.GET("/stats/summary", statsH.Summary)
 
 		// notifications
+		authed.GET("/notifications/vapid", notifH.Vapid)
 		authed.POST("/notifications/subscribe", notifH.Subscribe)
 	}
 
