@@ -123,6 +123,14 @@ func (h *SummonHandler) Draw(c *gin.Context) {
 		return
 	}
 
+	// Sanitize count to a closed enum so CodeQL data-flow sees no user-controlled
+	// size flowing into slice allocations / multiplications. The validator above
+	// already constrains the value; the explicit mapping makes the safety local.
+	count := 1
+	if req.Count == game.SummonMultiCount {
+		count = game.SummonMultiCount
+	}
+
 	ctx := c.Request.Context()
 	tx, err := h.Pool.Begin(ctx)
 	if err != nil {
@@ -141,13 +149,13 @@ func (h *SummonHandler) Draw(c *gin.Context) {
 
 	costPoints, costTickets := 0, 0
 	if req.CostType == "TICKET" {
-		costTickets = req.Count // 1 ticket per pull
+		costTickets = count // 1 ticket per pull
 		if tickets < costTickets {
 			RespondErr(c, http.StatusBadRequest, "INSUFFICIENT_TICKETS", "소환권이 부족합니다.")
 			return
 		}
 	} else {
-		if req.Count == game.SummonMultiCount {
+		if count == game.SummonMultiCount {
 			costPoints = game.SummonCostMulti
 		} else {
 			costPoints = game.SummonCostSingle
@@ -158,14 +166,9 @@ func (h *SummonHandler) Draw(c *gin.Context) {
 		}
 	}
 
-	count := req.Count
-	if count < 1 || count > game.SummonMultiCount {
-		RespondErr(c, http.StatusBadRequest, "BAD_REQUEST", "count out of allowed range")
-		return
-	}
-
 	// Roll rarities for the whole batch (pity-aware + 10-pull RARE+ guarantee).
 	rarities, endPity := rollBatch(count, pity)
+
 
 	draws := make([]models.SummonDraw, 0, count)
 	refundTotal := 0
