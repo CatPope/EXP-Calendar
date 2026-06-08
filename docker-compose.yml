@@ -25,11 +25,11 @@ services:
       - ./.env
     environment:
       DATABASE_URL: postgres://exp:exp@db:5432/expcalendar?sslmode=disable
-      LLM_MODEL: gemini-2.5-flash
+      LLM_MODEL: gemini-3.5-flash
       # 로컬 Ollama(1순위). 컨테이너에서 호스트로 나가려면 host.docker.internal 사용.
       # Ollama 가 꺼져 있으면 연결 거부로 즉시 Gemini 로 폴백한다.
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      OLLAMA_MODEL: gemma4:26b
+      OLLAMA_MODEL: gemma2:9b
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

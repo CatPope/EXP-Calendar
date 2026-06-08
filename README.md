@@ -90,7 +90,7 @@ docker compose up -d --build
 
 - `.env` 의 `GEMINI_API_KEY` 에 키를 입력하면 페르소나 페이지에서 **실제 Google Gemini API**(`generativelanguage.googleapis.com/v1beta`) 를 호출한다.
 - 비워두거나 5xx/네트워크 실패 시 백엔드가 **결정적(mock) 응답**으로 폴백한다. 기능 시연 및 자동 테스트는 mock 만으로도 가능하다.
-- 사용 모델은 `LLM_MODEL` (기본값 `gemini-2.0-flash`, docker-compose는 `gemini-2.5-flash` 로 오버라이드) 로 조절한다.
+- 사용 모델은 `LLM_MODEL` (기본값 `gemini-3.5-flash`) 로 조절한다.
 
 ## 주요 명령
 

@@ -37,10 +37,10 @@ type Client struct {
 // (연결 거부로 즉시 실패) Gemini 로 폴백한다.
 func NewClient(apiKey, model, ollamaBaseURL, ollamaModel string) *Client {
 	if model == "" {
-		model = "gemini-2.0-flash"
+		model = "gemini-3.5-flash"
 	}
 	if ollamaModel == "" {
-		ollamaModel = "gemma4:26b"
+		ollamaModel = "gemma2:9b"
 	}
 	return &Client{
 		APIKey:        apiKey,

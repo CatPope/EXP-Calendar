@@ -28,7 +28,7 @@ services:
       DEV_MODE: "true"
       ALLOWED_ORIGINS: "*"
       GEMINI_API_KEY: ""
-      LLM_MODEL: gemini-2.0-flash
+      LLM_MODEL: gemini-3.5-flash
     depends_on:
       test-db:
         condition: service_healthy

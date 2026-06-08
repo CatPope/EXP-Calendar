@@ -419,7 +419,7 @@ Backend:
 - `JWT_REFRESH_TTL_DAYS=14`
 - `GOOGLE_OAUTH_CLIENT_ID` (선택)
 - `GEMINI_API_KEY` (선택, 없으면 mock)
-- `LLM_MODEL=gemini-2.0-flash`
+- `LLM_MODEL=gemini-3.5-flash`
 - `DEV_MODE=true`
 - `PORT=8080`
 - `ALLOWED_ORIGINS=http://localhost:3000`
