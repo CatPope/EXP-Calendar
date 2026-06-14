@@ -212,9 +212,12 @@ func (h *AuthHandler) issueTokens(c *gin.Context, u *models.User) {
 	// 휴면 → 복귀 처리 (FR-DORM-02~05). 토큰 발급 전에 ACTIVE 로 되돌리고 보상을 적립.
 	var returnGrant *models.ReturnGrant
 	if u.AccountStatus == "DORMANT" {
-		if rg, err := h.Users.ProcessReturn(ctx, u.ID, timeNow()); err == nil {
-			returnGrant = rg
+		rg, err := h.Users.ProcessReturn(ctx, u.ID, timeNow())
+		if err != nil {
+			RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
+			return
 		}
+		returnGrant = rg
 	}
 	// 정상 로그인도 last_active_at 을 갱신해 14일 타이머를 리셋한다.
 	_ = h.Users.MarkActive(ctx, u.ID)
