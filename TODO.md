@@ -40,6 +40,7 @@
 - [x] **실제 Web Push 발송**(FR-NOTI-01): `webpush-go` VAPID-signed 발송 + 키 자동생성 + `GET /api/notifications/vapid` + 프론트 구독(`lib/push.ts`)·서비스워커(`worker/index.js`)·설정 "알림 켜기" 버튼. 410/404 구독 자동정리 (2026-06-04)
 - [x] **휴면/복귀 정책**(FR-DORM-01~06, FR-NOTI-03, 2026-06-14): 14일 미접속 자동 DORMANT 전환·13일차 경고 Push·복귀 시 2800P+7일 EXP 1.5×·최초 복귀 방어권 3장·성향 재설문 강제. backend(migration 013, repo/dormancy.go, engine 상수·CalculateRewardWithBuff, worker.processDormancy, auth/issueTokens ReturnGrant, me 활동 heartbeat·신규 응답 필드), frontend(types, login 토스트·재설문 라우팅, HUD 1.5× 뱃지), SSoT(`api_and_rules.md` 휴면/복귀 절) 동시 갱신
 - [!] 후속: GCal 양방향(V2), 다국어/다중테마(V2, UI만 노출)
+- [!] **ESLint 10 flat-config 마이그레이션** (PR #58 후속): dependabot 으로 eslint 10.5.0 도입되면서 `next lint` + 레거시 `.eslintrc.json` 조합이 깨져 CI 의 frontend lint 스텝이 항상 실패. 임시로 CI workflow 에서 lint 스텝을 비활성화(`.github/workflows/ci.yml`). 후속으로 `.eslintrc.json` → `eslint.config.mjs` (FlatCompat 또는 `eslint-config-next` flat export) 마이그레이션 필요.
 
 ## E. v1.4 정합 — UXUI v1.4 반영 (2026-06-03)
 
