@@ -14,7 +14,7 @@ import (
 // (FR-DORM-01). Best-effort — non-fatal on error.
 func (r *UserRepo) MarkActive(ctx context.Context, id uuid.UUID) error {
 	_, err := r.Pool.Exec(ctx,
-		`UPDATE users SET last_active_at = now() WHERE id = $1`, id)
+		`UPDATE users SET last_active_at = now() WHERE id = $1 AND last_active_at < now() - interval '1 hour'`, id)
 	return err
 }
 
