@@ -12,6 +12,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/expcalendar/backend/internal/repo"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -41,13 +42,22 @@ func truncate(s string, n int) string {
 
 // Worker ticks every interval to fire reminders and sweep overdue schedules.
 type Worker struct {
-	Pool     *pgxpool.Pool
-	Notifier Notifier
-	Interval time.Duration
+	Pool          *pgxpool.Pool
+	Notifier      Notifier
+	Interval      time.Duration
+	Users         *repo.UserRepo
+	dormancyEvery time.Duration
+	lastDormancy  time.Time
 }
 
 func New(pool *pgxpool.Pool, n Notifier) *Worker {
-	return &Worker{Pool: pool, Notifier: n, Interval: time.Minute}
+	return &Worker{
+		Pool:          pool,
+		Notifier:      n,
+		Interval:      time.Minute,
+		Users:         repo.NewUserRepo(pool),
+		dormancyEvery: time.Hour,
+	}
 }
 
 // Start launches the loop until ctx is cancelled.
@@ -75,6 +85,48 @@ func (w *Worker) tick(ctx context.Context) {
 	if err := w.sweepOverdue(ctx); err != nil {
 		log.Printf("[worker] overdue: %v", err)
 	}
+	// 휴면 정책(FR-DORM-01/06): 분 단위로 돌릴 필요 없으므로 시간 간격으로 throttle.
+	now := time.Now()
+	if w.dormancyEvery == 0 || now.Sub(w.lastDormancy) >= w.dormancyEvery {
+		w.lastDormancy = now
+		if err := w.processDormancy(ctx, now); err != nil {
+			log.Printf("[worker] dormancy: %v", err)
+		}
+	}
+}
+
+// processDormancy runs the daily-ish dormancy policy:
+//   - Send 13일차 경고 알림 (FR-NOTI-03 / FR-DORM-06).
+//   - 14일 이상 미접속 ACTIVE 계정을 DORMANT 로 전환 (FR-DORM-01).
+//
+// Returns the first non-nil error so failures are logged, but the function
+// always attempts both passes (warning before transition) so a transient push
+// outage cannot block the dormancy flip.
+func (w *Worker) processDormancy(ctx context.Context, now time.Time) error {
+	var firstErr error
+
+	candidates, err := w.Users.ListDormancyWarningCandidates(ctx, now)
+	if err != nil {
+		firstErr = err
+	} else {
+		for _, c := range candidates {
+			_ = w.Notifier.Send(ctx, c.Endpoint, c.P256dh, c.Auth,
+				"휴면 전환 임박",
+				"내일까지 접속이 없으면 휴면 상태로 전환됩니다.")
+			if mErr := w.Users.MarkDormancyWarningSent(ctx, c.UserID, now); mErr != nil && firstErr == nil {
+				firstErr = mErr
+			}
+		}
+	}
+
+	if n, sErr := w.Users.SweepDormant(ctx, now); sErr != nil {
+		if firstErr == nil {
+			firstErr = sErr
+		}
+	} else if n > 0 {
+		log.Printf("[worker] dormancy: %d accounts → DORMANT", n)
+	}
+	return firstErr
 }
 
 // sendReminders finds PENDING schedules whose due_date is within the user's

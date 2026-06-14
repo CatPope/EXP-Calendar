@@ -213,7 +213,9 @@ func (h *SchedulesHandler) Complete(c *gin.Context) {
 		return
 	}
 
-	expGain, ptsGross := game.CalculateReward(sched.Difficulty, u.Level, u.Tendency)
+	// 복귀 버프(FR-DORM-04): return_buff_until 이 미래면 EXP 1.5배.
+	returnBuff := game.IsReturnBuffActive(u.ReturnBuffUntil, now)
+	expGain, ptsGross := game.CalculateRewardWithBuff(sched.Difficulty, u.Level, u.Tendency, returnBuff)
 
 	tx, err := h.Pool.Begin(ctx)
 	if err != nil {

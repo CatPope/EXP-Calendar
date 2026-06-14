@@ -18,12 +18,14 @@
 
 ### POST /api/auth/google
 - body: `{ "id_token": "string" }`
-- res: `{ data: { access_token, refresh_token, user } }`
+- res: `{ data: { access_token, refresh_token, user, return_grant? } }`
+- `return_grant` 는 휴면(DORMANT) 계정이 로그인으로 복귀할 때만 동봉된다. 본문 구조와 정책은 §14 휴면/복귀 참고.
 
 ### POST /api/auth/dev-login  (DEV_MODE=true 일 때만)
 - body: `{ "email": "string", "display_name": "string" }`
-- res: `{ data: { access_token, refresh_token, user } }`
+- res: `{ data: { access_token, refresh_token, user, return_grant? } }`
 - 동일 email 존재 시 기존 사용자 반환, 없으면 생성
+- DORMANT 계정이면 자동으로 ACTIVE 로 복귀하고 `return_grant` 동봉
 
 ### POST /api/auth/refresh
 - body: `{ "refresh_token": "string" }`
@@ -52,10 +54,16 @@
     "persona_definition": "",
     "persona_tokens": 0,
     "tendency": "NORMAL",
-    "equipped_title": { "id": "uuid", "name": "string", "grade": "RARE", "color_hex": "#8B5CF6", "negative_modifier": null }
+    "equipped_title": { "id": "uuid", "name": "string", "grade": "RARE", "color_hex": "#8B5CF6", "negative_modifier": null },
+    "return_buff_until": "ISO8601 | null",
+    "needs_reonboarding": false,
+    "dormant_returned_count": 0
   }
 }
 ```
+- `return_buff_until` 가 미래면 일정 완료 보상 EXP 가 ×1.5 (FR-DORM-04). 만료/미설정이면 `null` 로 내려온다.
+- `needs_reonboarding=true` 면 클라이언트는 즉시 `/onboarding` 으로 라우팅한다 (FR-DORM-02). `POST /api/me/onboarding` 호출 시 자동으로 해제.
+- `/api/me` 호출은 `last_active_at` heartbeat 도 갱신해 14일 타이머를 리셋한다.
 
 ### POST /api/me/onboarding
 - body: `{ "tendency": "EASY" | "NORMAL" | "HARD" }`
@@ -358,6 +366,31 @@ UserTitle:
 | 전설의 수집가 | LEGENDARY | #FFD700 | `LEGENDARY_CHAR:1` | (히든) LEGENDARY 캐릭터 1종 보유 |
 
 평가 시점: 일정 완료 후(커밋 뒤) 사용자 누적 통계로 미보유 칭호를 부여.
+
+### 휴면/복귀 (FR-DORM-01~06, FR-NOTI-03)
+
+| 단계 | 트리거 | 효과 |
+|------|--------|------|
+| 활동 | 로그인·`/api/me`·일정 완료 등 인증 호출 | `last_active_at = now()` 갱신, 타이머 리셋 |
+| 13일차 경고 | 워커가 시간 단위로 스윕 | `notification_prefs.dormancy_warning=true` 사용자에게 Push 1회/일 발송 (FR-NOTI-03) |
+| 14일차 휴면 | `last_active_at < now() - 14d` | `account_status='DORMANT'`, `dormant_since=now()` |
+| 복귀 | DORMANT 계정 로그인 | 1회성 보상 패키지 발급 + `return_buff_until = now()+7d` + `needs_reonboarding=true` |
+
+`ReturnGrant` (login response 의 `return_grant` 필드):
+```json
+{
+  "points_granted": 2800,        // 14 × 일일 한도 200 (FR-DORM-03)
+  "defense_tickets_granted": 3,  // 최초 복귀만 (FR-DORM-05). 이후 복귀는 0
+  "buff_days": 7,
+  "first_time": true,
+  "needs_reonboarding": true
+}
+```
+
+- 포인트는 일일 한도(DC-04)를 우회한 1회성 즉시 적립.
+- EXP 버프는 일정 완료 보상 EXP 만 ×1.5, 포인트는 가산 없음.
+- `defense_tickets_granted` 는 `users.dormant_returned_count=0` 일 때만 3, 이후 복귀는 0.
+- 복귀 사용자는 다음 `POST /api/me/onboarding` 호출로 `needs_reonboarding=false` 가 된다.
 
 ### 페널티 (FR-TITLE-03/04)
 

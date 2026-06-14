@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestCalculateReward_BaseValues(t *testing.T) {
 	cases := []struct {
@@ -125,6 +128,38 @@ func TestRollRarity(t *testing.T) {
 	}
 	if RarityRank("LEGENDARY") <= RarityRank("EPIC") || RarityRank("RARE") <= RarityRank("COMMON") {
 		t.Errorf("rarity rank order wrong")
+	}
+}
+
+func TestCalculateRewardWithBuff_ReturnBuffBoostsExpOnly(t *testing.T) {
+	// MEDIUM, level 12, NORMAL → base (25, 12). Buff active → EXP ×1.5 = 38, Points unchanged.
+	exp, pts := CalculateRewardWithBuff("MEDIUM", 12, "NORMAL", true)
+	if exp != 38 || pts != 12 {
+		t.Errorf("buff on: got (%d,%d) want (38,12)", exp, pts)
+	}
+	exp, pts = CalculateRewardWithBuff("MEDIUM", 12, "NORMAL", false)
+	if exp != 25 || pts != 12 {
+		t.Errorf("buff off: got (%d,%d) want (25,12)", exp, pts)
+	}
+	// Buff stacks with low-level bonus + tendency: HIGH, lv 5, EASY = 50*1.5*1.2*1.5 = 135
+	exp, _ = CalculateRewardWithBuff("HIGH", 5, "EASY", true)
+	if exp != 135 {
+		t.Errorf("stacked: got %d want 135", exp)
+	}
+}
+
+func TestIsReturnBuffActive(t *testing.T) {
+	now := time.Date(2026, 6, 14, 12, 0, 0, 0, time.UTC)
+	future := now.Add(time.Hour)
+	past := now.Add(-time.Hour)
+	if !IsReturnBuffActive(&future, now) {
+		t.Errorf("future buff should be active")
+	}
+	if IsReturnBuffActive(&past, now) {
+		t.Errorf("past buff should be inactive")
+	}
+	if IsReturnBuffActive(nil, now) {
+		t.Errorf("nil buff should be inactive")
 	}
 }
 

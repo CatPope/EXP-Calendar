@@ -45,6 +45,20 @@ export interface User {
   tendency?: Tendency | string;
   equipped_title: Title | null;
   stats_public: boolean;
+  // 휴면/복귀 (FR-DORM-02/04)
+  return_buff_until?: string | null;
+  needs_reonboarding?: boolean;
+  dormant_returned_count?: number;
+}
+
+// 복귀 시 1회성으로 발급되는 보너스 패키지 (FR-DORM-03/04/05).
+// AuthResponse.return_grant 에만 동봉되며 /me 에서는 다시 내려오지 않는다.
+export interface ReturnGrant {
+  points_granted: number;
+  defense_tickets_granted: number;
+  buff_days: number;
+  first_time: boolean;
+  needs_reonboarding: boolean;
 }
 
 export interface Schedule {
@@ -155,6 +169,7 @@ export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   user: User;
+  return_grant?: ReturnGrant;
 }
 
 // ---------- v1.3 additions ----------

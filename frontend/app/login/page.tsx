@@ -28,6 +28,7 @@ export default function LoginPage() {
   const router = useRouter();
   const t = useT();
   const setUser = useAppStore((s) => s.setUser);
+  const pushToast = useAppStore((s) => s.pushToast);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -78,14 +79,31 @@ export default function LoginPage() {
       });
       setTokens(data.access_token, data.refresh_token);
       setUser(data.user);
+      flashReturnGrant(data);
       const me = await apiFetch<User>("/api/me");
       setUser(me);
+      // FR-DORM-02: 복귀 사용자는 성향 설문을 강제 재실행.
+      if (me.needs_reonboarding || data.return_grant) {
+        router.replace("/onboarding");
+        return;
+      }
       router.replace(me.persona_character_type ? "/calendar" : "/onboarding");
     } catch (e) {
       setErr(humanizeError(e));
     } finally {
       setBusy(false);
     }
+  }
+
+  // 휴면 복귀 보너스가 동봉되면 짧은 안내 토스트를 띄운다.
+  function flashReturnGrant(data: AuthResponse) {
+    const g = data.return_grant;
+    if (!g) return;
+    const parts = [`복귀 보너스 +${g.points_granted}P`, `EXP ${g.buff_days}일간 1.5×`];
+    if (g.first_time && g.defense_tickets_granted > 0) {
+      parts.push(`방어권 ${g.defense_tickets_granted}장`);
+    }
+    pushToast("success", "돌아오신 걸 환영해요! " + parts.join(" · "));
   }
 
   async function handleDevAuth(e: React.FormEvent) {
@@ -104,7 +122,13 @@ export default function LoginPage() {
       });
       setTokens(data.access_token, data.refresh_token);
       setUser(data.user);
+      flashReturnGrant(data);
       // 신규 가입은 성향 설문(온보딩)으로, 로그인은 캘린더로.
+      // 단, 복귀 사용자(FR-DORM-02)는 성향 재설문 강제.
+      if (mode !== "signup" && data.return_grant) {
+        router.replace("/onboarding");
+        return;
+      }
       router.replace(mode === "signup" ? "/onboarding" : "/calendar");
     } catch (e) {
       // 없는 계정으로 로그인 시도 → 회원가입 모드로 안내.

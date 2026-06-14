@@ -34,6 +34,8 @@ const userSelect = `SELECT id, email, display_name, google_sub, account_status, 
 	summon_tickets, pity_counter,
 	persona_name, persona_tone, persona_history, persona_thoughts, status_message, defense_tickets,
 	stats_public, password_hash,
+	last_active_at, dormant_since, dormant_returned_count, return_buff_until,
+	dormancy_warning_sent_date, needs_reonboarding,
 	created_at, updated_at FROM users`
 
 func scanUser(row pgx.Row) (*models.User, error) {
@@ -45,6 +47,8 @@ func scanUser(row pgx.Row) (*models.User, error) {
 		&u.SummonTickets, &u.PityCounter,
 		&u.PersonaName, &u.PersonaTone, &u.PersonaHistory, &u.PersonaThoughts, &u.StatusMessage, &u.DefenseTickets,
 		&u.StatsPublic, &u.PasswordHash,
+		&u.LastActiveAt, &u.DormantSince, &u.DormantReturnedCount, &u.ReturnBuffUntil,
+		&u.DormancyWarningSentAt, &u.NeedsReonboarding,
 		&u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return nil, err
