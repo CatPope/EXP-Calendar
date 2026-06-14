@@ -51,9 +51,10 @@ type loginUser struct {
 }
 
 type loginResponse struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	User         loginUser `json:"user"`
+	AccessToken  string              `json:"access_token"`
+	RefreshToken string              `json:"refresh_token"`
+	User         loginUser           `json:"user"`
+	ReturnGrant  *models.ReturnGrant `json:"return_grant,omitempty"`
 }
 
 func (h *AuthHandler) Google(c *gin.Context) {
@@ -206,6 +207,18 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 func (h *AuthHandler) issueTokens(c *gin.Context, u *models.User) {
+	ctx := c.Request.Context()
+
+	// 휴면 → 복귀 처리 (FR-DORM-02~05). 토큰 발급 전에 ACTIVE 로 되돌리고 보상을 적립.
+	var returnGrant *models.ReturnGrant
+	if u.AccountStatus == "DORMANT" {
+		if rg, err := h.Users.ProcessReturn(ctx, u.ID, timeNow()); err == nil {
+			returnGrant = rg
+		}
+	}
+	// 정상 로그인도 last_active_at 을 갱신해 14일 타이머를 리셋한다.
+	_ = h.Users.MarkActive(ctx, u.ID)
+
 	access, err := h.JWT.IssueAccess(u.ID)
 	if err != nil {
 		RespondErr(c, http.StatusInternalServerError, "JWT_ERROR", err.Error())
@@ -216,7 +229,7 @@ func (h *AuthHandler) issueTokens(c *gin.Context, u *models.User) {
 		RespondErr(c, http.StatusInternalServerError, "JWT_ERROR", err.Error())
 		return
 	}
-	if err := h.RefreshRepo.Store(c.Request.Context(), refresh, u.ID, exp); err != nil {
+	if err := h.RefreshRepo.Store(ctx, refresh, u.ID, exp); err != nil {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
@@ -229,5 +242,6 @@ func (h *AuthHandler) issueTokens(c *gin.Context, u *models.User) {
 			DisplayName: u.DisplayName,
 			Level:       u.Level,
 		},
+		ReturnGrant: returnGrant,
 	})
 }

@@ -8,7 +8,50 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 )
+
+// ─────────────────────────────────────────────────────────────
+// 휴면/복귀 정책 (FR-DORM-01~06) — 상수
+// ─────────────────────────────────────────────────────────────
+
+const (
+	// DormancyThresholdDays: 마지막 활동으로부터 N일 이상 미접속이면 자동 휴면 (FR-DORM-01).
+	DormancyThresholdDays = 14
+	// DormancyWarningDay: N일차에 휴면 경고 알림 발송 (FR-NOTI-03).
+	DormancyWarningDay = 13
+	// ReturnBuffDays: 복귀 후 EXP 1.5배 버프 유지 기간 (FR-DORM-04).
+	ReturnBuffDays = 7
+	// ReturnBuffMultiplierExp: 버프 활성 시 EXP 가산 배수.
+	ReturnBuffMultiplierExp = 1.5
+	// ReturnPointsBonus: 복귀 즉시 지급 포인트 (14일치 일일 한도 이상, FR-DORM-03).
+	ReturnPointsBonus = 14 * 200
+	// ReturnDefenseTicketsFirstTime: 최초 복귀 시 무료 지급 등급 하락 방어권 수 (FR-DORM-05).
+	ReturnDefenseTicketsFirstTime = 3
+)
+
+// IsReturnBuffActive reports whether the user's return EXP buff window is still open.
+func IsReturnBuffActive(buffUntil *time.Time, now time.Time) bool {
+	return buffUntil != nil && buffUntil.After(now)
+}
+
+// CalculateRewardWithBuff is CalculateReward with the FR-DORM-04 return buff
+// optionally applied to EXP only (points are not boosted to keep cap fair).
+func CalculateRewardWithBuff(difficulty string, userLevel int, tendency string, returnBuff bool) (int, int) {
+	baseExp, basePts := baseRewards(difficulty)
+	levelBonus := 1.0
+	if userLevel < 10 {
+		levelBonus = 1.5
+	}
+	tendencyBonus := tendencyMultiplier(tendency)
+	expMult := 1.0
+	if returnBuff {
+		expMult = ReturnBuffMultiplierExp
+	}
+	exp := int(math.Round(float64(baseExp) * levelBonus * tendencyBonus * expMult))
+	pts := int(math.Round(float64(basePts) * levelBonus * tendencyBonus))
+	return exp, pts
+}
 
 // CalculateReward returns (exp, points) using SSoT formulas.
 //

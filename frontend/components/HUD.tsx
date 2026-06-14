@@ -54,7 +54,17 @@ export default function HUD() {
 
         <div className="flex-1 min-w-[180px]">
           <div className="flex justify-between text-xs text-text-2 mb-1">
-            <span className="flex items-center gap-1"><Zap className="h-3 w-3" />EXP</span>
+            <span className="flex items-center gap-1">
+              <Zap className="h-3 w-3" />EXP
+              {user.return_buff_until && new Date(user.return_buff_until) > new Date() && (
+                <span
+                  title="휴면 복귀 버프: EXP 1.5배"
+                  className="ml-1 px-1.5 py-0.5 rounded bg-success/20 text-success font-mono text-[10px] uppercase tracking-wider"
+                >
+                  1.5×
+                </span>
+              )}
+            </span>
             <span className="font-mono">
               {user.total_exp} / {levelTotalExp}
             </span>

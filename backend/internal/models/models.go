@@ -37,8 +37,25 @@ type User struct {
 	DefenseTickets        int       `json:"defense_tickets"`
 	StatsPublic           bool      `json:"stats_public"`
 	PasswordHash          string    `json:"-"` // bcrypt 해시. 빈 문자열이면 비밀번호 미설정 (legacy).
+	// 휴면/복귀 (FR-DORM-01~06)
+	LastActiveAt           time.Time  `json:"-"`
+	DormantSince           *time.Time `json:"-"`
+	DormantReturnedCount   int        `json:"dormant_returned_count"`
+	ReturnBuffUntil        *time.Time `json:"return_buff_until"`
+	DormancyWarningSentAt  *time.Time `json:"-"`
+	NeedsReonboarding      bool       `json:"needs_reonboarding"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"-"`
+}
+
+// ReturnGrant is the one-time payload returned by login when a DORMANT account
+// re-activates (FR-DORM-03~05). The client uses it to show a welcome-back modal.
+type ReturnGrant struct {
+	PointsGranted         int  `json:"points_granted"`
+	DefenseTicketsGranted int  `json:"defense_tickets_granted"`
+	BuffDays              int  `json:"buff_days"`
+	FirstTime             bool `json:"first_time"`
+	NeedsReonboarding     bool `json:"needs_reonboarding"`
 }
 
 type Schedule struct {

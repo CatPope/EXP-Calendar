@@ -38,6 +38,7 @@
 - [x] **통계·등급**(FR-STAT-03/05): `/stats/summary`(rating D~S·현재/최장 스트릭), 프론트 `stats/`
 - [x] **프론트 화면 4종**(UI-08/09/10/11): `quests`/`summon`/`stats`/`settings` + `api.ts`·`types.ts`·네비 갱신 (next build 통과)
 - [x] **실제 Web Push 발송**(FR-NOTI-01): `webpush-go` VAPID-signed 발송 + 키 자동생성 + `GET /api/notifications/vapid` + 프론트 구독(`lib/push.ts`)·서비스워커(`worker/index.js`)·설정 "알림 켜기" 버튼. 410/404 구독 자동정리 (2026-06-04)
+- [x] **휴면/복귀 정책**(FR-DORM-01~06, FR-NOTI-03, 2026-06-14): 14일 미접속 자동 DORMANT 전환·13일차 경고 Push·복귀 시 2800P+7일 EXP 1.5×·최초 복귀 방어권 3장·성향 재설문 강제. backend(migration 013, repo/dormancy.go, engine 상수·CalculateRewardWithBuff, worker.processDormancy, auth/issueTokens ReturnGrant, me 활동 heartbeat·신규 응답 필드), frontend(types, login 토스트·재설문 라우팅, HUD 1.5× 뱃지), SSoT(`api_and_rules.md` 휴면/복귀 절) 동시 갱신
 - [!] 후속: GCal 양방향(V2), 다국어/다중테마(V2, UI만 노출)
 
 ## E. v1.4 정합 — UXUI v1.4 반영 (2026-06-03)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/expcalendar/backend/internal/game"
 	"github.com/expcalendar/backend/internal/middleware"
@@ -51,6 +52,10 @@ type meResponse struct {
 	ActiveCosmetic       string   `json:"active_cosmetic"`
 	PurchasedCosmetics   []string `json:"purchased_cosmetics"`
 	StatsPublic          bool     `json:"stats_public"`
+	// 휴면/복귀 (FR-DORM-02/04) — 클라이언트가 버프 표시 및 재설문 라우팅 결정에 사용.
+	ReturnBuffUntil      *time.Time `json:"return_buff_until"`
+	NeedsReonboarding    bool       `json:"needs_reonboarding"`
+	DormantReturnedCount int        `json:"dormant_returned_count"`
 }
 
 func (h *MeHandler) Get(c *gin.Context) {
@@ -64,6 +69,9 @@ func (h *MeHandler) Get(c *gin.Context) {
 		RespondErr(c, http.StatusNotFound, "NOT_FOUND", "user not found")
 		return
 	}
+	// 활동 heartbeat (FR-DORM-01). 인증된 me 호출은 곧 활성 사용자이므로
+	// 14일 타이머를 갱신한다. 실패는 비치명.
+	_ = h.Users.MarkActive(c.Request.Context(), uid)
 
 	equipped, _ := h.Titles.EquippedFor(c.Request.Context(), uid)
 	var equippedJSON any = nil
@@ -108,7 +116,19 @@ func (h *MeHandler) Get(c *gin.Context) {
 		ActiveCosmetic:       u.ActiveCosmetic,
 		PurchasedCosmetics:   owned,
 		StatsPublic:          u.StatsPublic,
+		ReturnBuffUntil:      activeBuff(u.ReturnBuffUntil),
+		NeedsReonboarding:    u.NeedsReonboarding,
+		DormantReturnedCount: u.DormantReturnedCount,
 	})
+}
+
+// activeBuff returns the buff timestamp only while it is still in the future,
+// so the client never has to interpret a stale value.
+func activeBuff(t *time.Time) *time.Time {
+	if t == nil || !t.After(timeNow()) {
+		return nil
+	}
+	return t
 }
 
 type profileReq struct {
@@ -206,6 +226,9 @@ func buildMeResponse(u *models.User, purchasedCosmetics []string) meResponse {
 		ActiveCosmetic:       u.ActiveCosmetic,
 		PurchasedCosmetics:   purchasedCosmetics,
 		StatsPublic:          u.StatsPublic,
+		ReturnBuffUntil:      activeBuff(u.ReturnBuffUntil),
+		NeedsReonboarding:    u.NeedsReonboarding,
+		DormantReturnedCount: u.DormantReturnedCount,
 	}
 }
 
@@ -240,6 +263,8 @@ func (h *MeHandler) Onboarding(c *gin.Context) {
 		RespondErr(c, http.StatusInternalServerError, "DB_ERROR", err.Error())
 		return
 	}
+	// FR-DORM-02: 복귀 시 강제된 성향 재설문이 끝났음을 표시한다.
+	_ = h.Users.ClearReonboarding(c.Request.Context(), uid)
 	Respond(c, http.StatusOK, okResponse{OK: true})
 }
 

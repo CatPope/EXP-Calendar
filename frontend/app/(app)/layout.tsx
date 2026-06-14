@@ -64,6 +64,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       try {
         const me = await Api.me();
         setUser(me);
+        // FR-DORM-02: 복귀 시 성향 재설문 강제. 온보딩 페이지가 끝나면
+        // POST /me/onboarding 이 needs_reonboarding 을 해제한다.
+        if (me.needs_reonboarding && pathname !== "/onboarding") {
+          router.replace("/onboarding");
+          return;
+        }
       } catch (e) {
         clearTokens();
         setUser(null);

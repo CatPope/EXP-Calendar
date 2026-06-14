@@ -178,7 +178,7 @@ docker compose exec db psql -U exp -d expcalendar -c "select count(*) from users
 - **Part F (Push)**: 스켈레톤만. FCM/Web Push 발송 파이프라인은 미완.
 - **Part G (페르소나)**: LLM 호출 또는 결정적 mock 텍스트 변환.
 - **Part H (쇼케이스)**: 본인/타인 프로필, 보유 칭호 / 레벨 / 최근 활동 노출.
-- **Part I (휴면 / 복귀)**: **미구현**.
+- **Part I (휴면 / 복귀)**: 14일 미접속 자동 휴면, 13일차 경고 Push, 복귀 시 +2,800P · 7일 EXP 1.5× 버프 · 최초 복귀 방어권 3장 · 성향 재설문 강제 (FR-DORM-01~06, FR-NOTI-03).
 - **Part J (고급 분석 / 추천)**: **미구현**.
 
 ## 테스트 시나리오 (수동)
@@ -191,6 +191,18 @@ docker compose exec db psql -U exp -d expcalendar -c "select count(*) from users
 4. **상점** 진입 → 아이템 구매 → 포인트가 차감되고 보유 목록에 들어오는지 확인.
 5. **페르소나** 페이지에서 임의 텍스트 입력 → 변환 결과 확인 (키 없으면 mock 응답).
 6. **쇼케이스** 페이지에서 본인 프로필 / 타인 프로필 (URL 의 유저 ID 변경) 열람.
+7. **휴면/복귀** (Part I) 데모 — DB 에서 `last_active_at` 을 과거로 미루면 워커가 다음 tick 에 해당 계정을 `DORMANT` 로 전환한다. 그 상태로 다시 로그인하면 복귀 보너스 토스트가 뜨고 성향 재설문 화면으로 강제 이동, HUD EXP 옆에 `1.5×` 뱃지가 7일간 표시된다.
+
+   ```powershell
+   # dev@example.com 을 14일 미접속 상태로 만든 뒤 워커가 휴면 전환할 때까지 대기 (최대 ~1시간, 강제 즉시 전환은 SQL 한 줄로도 가능).
+   docker compose exec db psql -U exp -d expcalendar -c `
+     "UPDATE users SET last_active_at = now() - interval '15 days' WHERE email='dev@example.com';"
+
+   # 즉시 결과를 보고 싶다면 아래로 한 번에 DORMANT 까지 밀어도 된다.
+   docker compose exec db psql -U exp -d expcalendar -c `
+     "UPDATE users SET account_status='DORMANT', dormant_since=now() - interval '1 day', last_active_at=now() - interval '15 days' WHERE email='dev@example.com';"
+   ```
+   재로그인 후 `/api/me` 응답의 `return_buff_until` 이 7일 뒤로 설정되고, 일정 완료 보상 EXP 가 기존 대비 1.5배로 들어오는지 확인한다.
 
 ## 폴더 구조
 
