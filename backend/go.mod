@@ -11,7 +11,7 @@ require (
 	github.com/jackc/pgx/v5 v5.6.0
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/crypto v0.53.0
-	google.golang.org/api v0.287.1
+	google.golang.org/api v0.288.0
 )
 
 require (
