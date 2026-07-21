@@ -65,7 +65,7 @@ jobs:
           echo "found=true" >> "$GITHUB_OUTPUT"
         working-directory: .
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         if: steps.check.outputs.found == 'true'
         with:
           # Follow backend/go.mod so a future bump there propagates automatically.
